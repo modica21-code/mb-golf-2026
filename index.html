@@ -570,9 +570,9 @@ function setHole(h){HOLE=h;render();}
 function setShowCard(v){SHOW_CARD=v;render();}
 
 function adjScore(p,delta){
-  const cur=ps(S.scores[RND][p][HOLE])||0;
-  const par=S.pars[RND][HOLE];
-  let nv=cur+delta;
+  const cur=ps(S.scores[RND][p][HOLE]);
+  if(delta<0&&(cur===null||cur<=1)){S.scores[RND][p][HOLE]="";saveS();if(navigator.vibrate)navigator.vibrate(8);render();return;}
+  let nv=(cur||0)+delta;
   if(nv<1)nv=1;
   if(nv>12)nv=12;
   S.scores[RND][p][HOLE]=String(nv);
