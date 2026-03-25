@@ -165,6 +165,20 @@ const SKEY = "mb-golf-2026-v2";
 const MEDALS = ["🥇","🥈","🥉","🎖️"];
 const TEETIME = {1:"2:33 PM · Thu 3/26",2:"8:23 AM · Fri 3/27",3:"2:34 PM · Fri 3/27",4:"1:07 PM · Sat 3/28"};
 
+// Who plays each round and team pairings
+const ROUND_PLAYERS = {
+  1:["Modes","Jake","McGins"],           // Thu — no Joey
+  2:["Modes","Jake","Joey","McGins"],    // Fri AM — all 4
+  3:["Modes","Jake","Joey","McGins"],    // Fri PM — all 4
+  4:["Modes","Jake","Joey","McGins"]     // Sat — all 4
+};
+const ROUND_TEAMS = {
+  1:null,                                          // stroke play / individual
+  2:{a:["Modes","Joey"], b:["Jake","McGins"]},     // Fri AM: Modes+Joey vs Jake+McGins
+  3:{a:["Modes","Joey"], b:["Jake","McGins"]},     // Fri PM: same teams
+  4:{a:["Modes","Jake"], b:["Joey","McGins"]}      // Sat: Modes+Jake vs Joey+McGins
+};
+
 // ── Real course data ──────────────────────────────────────────
 const CDATA = {
   1:{
@@ -325,6 +339,16 @@ function updateSyncBadge(status){
 }
 
 // Load initial state from Firebase then start live listener
+function seedMatches(){
+  // Pre-seed team matches if none exist
+  if(S.matches&&S.matches.length>0)return;
+  S.matches=[
+    {id:1001,round:2,fmt:"Best Ball",t1:["Modes","Joey"],t2:["Jake","McGins"],winner:"",notes:"Fri AM"},
+    {id:1002,round:3,fmt:"Best Ball",t1:["Modes","Joey"],t2:["Jake","McGins"],winner:"",notes:"Fri PM"},
+    {id:1003,round:4,fmt:"Best Ball",t1:["Modes","Jake"],t2:["Joey","McGins"],winner:"",notes:"Sat"},
+  ];
+}
+
 async function initFirebase(){
   try{
     const remote = await fbGet();
@@ -336,10 +360,14 @@ async function initFirebase(){
       if(remote.ts) FB_LAST_TS=remote.ts;
       ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
       try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}
+    } else {
+      seedMatches();
+      saveS();
     }
     render();
     updateSyncBadge("live");
   }catch(e){
+    seedMatches();
     updateSyncBadge("offline");
   }
   startFirebaseSync();
@@ -362,17 +390,19 @@ function runTot(r,p,upTo){
 
 // ── Calculations ─────────────────────────────────────────
 function calcSkins(r){
+  const rp=ROUND_PLAYERS[r]||PLAYERS;
   let carry=0;const wins=Object.fromEntries(PLAYERS.map(p=>[p,0]));
   for(let h=0;h<18;h++){
-    const vs=PLAYERS.map(p=>ps(S.scores[r][p]?.[h]));
+    const vs=rp.map(p=>ps(S.scores[r][p]?.[h]));
     if(vs.some(v=>v===null))continue;
-    const mn=Math.min(...vs);const w=PLAYERS.filter((_,i)=>vs[i]===mn);
+    const mn=Math.min(...vs);const w=rp.filter((_,i)=>vs[i]===mn);
     if(w.length===1){wins[w[0]]+=1+carry;carry=0;}else carry++;
   }
   return{wins,carry};
 }
 function calcRPts(r){
-  const tots=PLAYERS.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+  const rp=ROUND_PLAYERS[r]||PLAYERS;
+  const tots=rp.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
   const PT=[4,3,2,1];const res={};let pv=-1,pp=0;
   tots.forEach((x,i)=>{if(x.t!==pv){pp=PT[i]??0;pv=x.t;}res[x.p]=pp;});
   return res;
@@ -422,16 +452,39 @@ function buildBoard(){
     const rp=calcRPts(r);
     const tots=PLAYERS.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
     const parT=pSum(S.pars[r]);
+    const teams=ROUND_TEAMS[r];
+    const rPlayers=ROUND_PLAYERS[r]||PLAYERS;
+    const teamBadge=p=>{
+      if(!teams)return"";
+      const t=teams.a.includes(p)?"A":teams.b.includes(p)?"B":"";
+      const col=teams.a.includes(p)?"#2B7DD6":"#D44A38";
+      return t?`<span style="font-size:10px;background:${col}22;color:${col};border-radius:4px;padding:1px 5px;font-weight:600">Team ${t}</span>`:"";
+    };
     return`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
         <span style="font-weight:600">Round ${r}</span><span class="muted">${CDATA[r].short}</span>
       </div>
-      <div class="muted" style="margin-bottom:10px">${TEETIME[r]}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="muted">${TEETIME[r]}</span>
+        ${!rPlayers.includes("Joey")?`<span style="font-size:10px;background:rgba(212,74,56,0.12);color:#f07060;border-radius:4px;padding:1px 6px">Joey sits out</span>`:""}
+        ${teams?`<span style="font-size:10px;background:rgba(34,168,97,0.12);color:var(--green);border-radius:4px;padding:1px 6px">Team format</span>`:""}
+      </div>
+      ${teams?`<div style="display:flex;gap:6px;margin-bottom:10px">
+        <div style="flex:1;background:rgba(43,125,214,0.1);border:0.5px solid rgba(43,125,214,0.3);border-radius:8px;padding:7px 8px">
+          <div style="font-size:10px;color:#2B7DD6;font-weight:600;margin-bottom:4px">Team A</div>
+          <div style="display:flex;gap:6px">${teams.a.map(p=>`<div style="display:flex;align-items:center;gap:4px">${av(p,"sm")}<span style="font-size:12px;font-weight:600;color:${PC[p]}">${p}</span></div>`).join("")}</div>
+        </div>
+        <div style="flex:1;background:rgba(212,74,56,0.1);border:0.5px solid rgba(212,74,56,0.3);border-radius:8px;padding:7px 8px">
+          <div style="font-size:10px;color:#D44A38;font-weight:600;margin-bottom:4px">Team B</div>
+          <div style="display:flex;gap:6px">${teams.b.map(p=>`<div style="display:flex;align-items:center;gap:4px">${av(p,"sm")}<span style="font-size:12px;font-weight:600;color:${PC[p]}">${p}</span></div>`).join("")}</div>
+        </div>
+      </div>`:""}
       ${tots.length===0?`<div class="muted">Not started yet</div>`:tots.map((x,i)=>`
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
           <span style="font-size:15px;width:20px">${MEDALS[i]}</span>
           ${av(x.p,"sm")}
           <span style="color:${PC[x.p]};font-weight:600;flex:1">${x.p}</span>
+          ${teamBadge(x.p)}
           ${diffTag(x.t,parT)}
           <span style="font-weight:700;font-size:17px;min-width:28px;text-align:right">${x.t}</span>
           <span style="color:var(--green);font-size:11px;min-width:20px;text-align:right">${rp[x.p]?"+"+rp[x.p]:"—"}</span>
@@ -510,13 +563,13 @@ function buildBoard(){
 
 // ── LIVE SCORING ──────────────────────────────────────────
 function buildLiveLeaderboard(){
-  // Show each player's running total vs par through holes played
-  const thruH = PLAYERS.map(p => {
+  const rp=ROUND_PLAYERS[RND]||PLAYERS;
+  const thruH = rp.map(p => {
     for(let h=17;h>=0;h--){if(ps(S.scores[RND][p][h]))return h+1;}return 0;
   });
   const maxThru = Math.max(...thruH);
 
-  return PLAYERS.map(p=>{
+  return rp.map(p=>{
     const rt = runTot(RND,p,18);
     const d = rt ? rt.diff : null;
     const thru = thruH[PLAYERS.indexOf(p)];
@@ -531,9 +584,9 @@ function buildLiveLeaderboard(){
 }
 
 function buildHoleDots(){
-  return PLAYERS.length && Array.from({length:18},(_,h)=>{
-    const allDone = PLAYERS.every(p=>ps(S.scores[RND][p][h]));
-    const anyDone = PLAYERS.some(p=>ps(S.scores[RND][p][h]));
+  const rp=ROUND_PLAYERS[RND]||PLAYERS;
+  return Array.from({length:18},(_,h)=>{
+    const allDone = rp.every(p=>ps(S.scores[RND][p][h]));
     let cls = h===HOLE?"active":allDone?"done":"";
     return `<div class="h-dot ${cls}" onclick="setHole(${h})">${h+1}</div>`;
   }).join("");
@@ -541,7 +594,8 @@ function buildHoleDots(){
 
 function buildPlayerRows(){
   const par = CDATA[RND].par[HOLE];
-  return PLAYERS.map(p=>{
+  const rp = ROUND_PLAYERS[RND]||PLAYERS;
+  return rp.map(p=>{
     const v = ps(S.scores[RND][p][HOLE]);
     const rt = runTot(RND,p,HOLE+1);
     const d = rt ? rt.diff : null;
@@ -981,7 +1035,8 @@ function buildWeatherCard(){
 // ── AUTO-ADVANCE ──────────────────────────────────────────
 function checkAutoAdvance(){
   if(SHOW_CARD)return;
-  const allDone=PLAYERS.every(p=>ps(S.scores[RND][p][HOLE])!==null);
+  const rp=ROUND_PLAYERS[RND]||PLAYERS;
+  const allDone=rp.every(p=>ps(S.scores[RND][p][HOLE])!==null);
   if(allDone&&HOLE<17){
     setTimeout(()=>{HOLE++;render();if(navigator.vibrate)navigator.vibrate([20,50,20]);},600);
   }
