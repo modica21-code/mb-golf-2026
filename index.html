@@ -137,6 +137,21 @@ input[type=number]{-moz-appearance:textfield;}
 
 /* Scorecard toggle */
 #sc-toggle{display:flex;gap:8px;padding:10px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0;}
+
+/* Team match bar */
+#match-bar{padding:8px 14px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0;}
+
+/* Celebration overlay */
+#celebrate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.82);z-index:999;pointer-events:none;opacity:0;transition:opacity 0.3s;}
+#celebrate.show{opacity:1;pointer-events:all;}
+#celebrate .cel-icon{font-size:72px;animation:celBounce 0.5s ease;}
+#celebrate .cel-text{font-size:28px;font-weight:800;color:#fff;margin-top:8px;}
+#celebrate .cel-sub{font-size:16px;color:rgba(255,255,255,0.7);margin-top:4px;}
+@keyframes celBounce{0%{transform:scale(0.3);}70%{transform:scale(1.15);}100%{transform:scale(1);}}
+
+/* Round summary overlay */
+#round-summary{position:fixed;inset:0;background:var(--bg);z-index:998;overflow-y:auto;display:none;}
+#round-summary.show{display:block;}
 </style>
 </head>
 <body>
@@ -154,6 +169,22 @@ input[type=number]{-moz-appearance:textfield;}
   </div>
   <div id="tab-bar"></div>
   <div id="content"></div>
+
+  <!-- Celebration flash -->
+  <div id="celebrate" onclick="document.getElementById('celebrate').classList.remove('show')">
+    <div class="cel-icon" id="cel-icon">🦅</div>
+    <div class="cel-text" id="cel-text">EAGLE!</div>
+    <div class="cel-sub" id="cel-sub">Tap to dismiss</div>
+  </div>
+
+  <!-- Round summary screen -->
+  <div id="round-summary">
+    <div style="padding:calc(var(--safe-top)+16px) 16px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border)">
+      <div style="font-weight:700;font-size:18px">Round Complete! 🏆</div>
+      <button onclick="closeRoundSummary()" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);cursor:pointer;font-size:13px">Close</button>
+    </div>
+    <div id="round-summary-content" style="padding:16px"></div>
+  </div>
 </div>
 
 <script>
@@ -419,101 +450,181 @@ function getStandings(){
   return PLAYERS.map(p=>({p,...acc[p],total:acc[p].rp+acc[p].sk+acc[p].ctp+acc[p].ld})).sort((a,b)=>b.total-a.total);
 }
 
+// ── TEAM MATCH CALCULATIONS ──────────────────────────────
+// Best Ball: best gross score on each hole per team
+// Returns {holesA, holesB, holesHalved, thru, nassau:{front,back,overall}}
+function calcTeamMatch(r){
+  const teams=ROUND_TEAMS[r];
+  if(!teams)return null;
+  const pars=CDATA[r].par;
+  let holesA=0,holesB=0,halved=0,thru=0;
+  let frontA=0,frontB=0,backA=0,backB=0;
+  for(let h=0;h<18;h++){
+    const bestA=Math.min(...teams.a.map(p=>ps(S.scores[r][p]?.[h])).filter(n=>n!==null));
+    const bestB=Math.min(...teams.b.map(p=>ps(S.scores[r][p]?.[h])).filter(n=>n!==null));
+    if(!isFinite(bestA)||!isFinite(bestB))continue;
+    thru=h+1;
+    if(bestA<bestB){holesA++;if(h<9)frontA++;else backA++;}
+    else if(bestB<bestA){holesB++;if(h<9)frontB++;else backB++;}
+    else{halved++;if(h<9){frontA+=0.5;frontB+=0.5;}else{backA+=0.5;backB+=0.5;}}
+  }
+  // Match status: how many up
+  const diff=holesA-holesB;
+  const remaining=18-thru;
+  let status="",color="var(--muted)";
+  if(thru===0){status="Not started";}
+  else if(diff===0){status="All Square";color="var(--muted)";}
+  else{
+    const leader=diff>0?"A":"B";
+    const up=Math.abs(diff);
+    const col=leader==="A"?"#2B7DD6":"#D44A38";
+    color=col;
+    if(thru===18||up>remaining){status=`Team ${leader} wins ${up}&${remaining===0?"&":""}${up>remaining?`${up}&${remaining}`:`${up} UP`}`;}
+    else{status=`Team ${leader} ${up} UP (${remaining} to go)`;}
+  }
+  // Nassau front/back/overall
+  const nassauA=frontA>frontB?1:frontA<frontB?0:0.5;
+  const nassauB=backA>backB?1:backA<backB?0:0.5;
+  const nassauO=holesA>holesB?1:holesA<holesB?0:0.5;
+  return{holesA,holesB,halved,thru,diff,remaining,status,color,
+    nassau:{front:{a:frontA,b:frontB,winner:nassauA>nassauB?"A":nassauB>nassauA?"B":"Tied"},
+            back:{a:backA,b:backB,winner:nassauB>nassauA?"B":nassauA>nassauB?"A":"Tied"},
+            overall:{a:holesA,b:holesB,winner:holesA>holesB?"A":holesB>holesA?"B":"Tied"}}};
+}
+
 // ── BOARD ─────────────────────────────────────────────────
 function buildBoard(){
   const st=getStandings();
-  // Net standings
   const ns=netStandings();
   const anyNet=ns.some(x=>x.played>0);
 
+  // Team match banners for active rounds
+  const matchBanners=ROUNDS.map(r=>{
+    const tm=calcTeamMatch(r);
+    if(!tm||tm.thru===0)return"";
+    const teams=ROUND_TEAMS[r];
+    const na=tm.nassau,col=tm.color;
+    const done=tm.thru===18;
+    return`<div style="background:var(--card);border:0.5px solid ${col};border-radius:12px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Round ${r} · ${CDATA[r].short} · Best Ball</div>
+          <div style="font-size:16px;font-weight:800;color:${col}">${tm.status}</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);text-align:right">${done?"Final":tm.thru+" holes"}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;margin-bottom:10px">
+        <div style="background:rgba(43,125,214,0.1);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:#2B7DD6;font-weight:600;margin-bottom:4px">TEAM A</div>
+          <div style="display:flex;justify-content:center;gap:4px;margin-bottom:4px">${teams.a.map(p=>`<img src="${PHOTOS[p]}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>`).join("")}</div>
+          <div style="font-size:11px;color:#2B7DD6">${teams.a.join(" & ")}</div>
+          <div style="font-size:24px;font-weight:800;color:#2B7DD6">${tm.holesA}</div>
+        </div>
+        <div style="text-align:center;padding:4px">
+          <div style="font-size:10px;color:var(--muted)">holes</div>
+          <div style="font-size:18px;font-weight:700;color:var(--muted)">vs</div>
+          <div style="font-size:10px;color:var(--muted)">${tm.halved} halved</div>
+        </div>
+        <div style="background:rgba(212,74,56,0.1);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:#D44A38;font-weight:600;margin-bottom:4px">TEAM B</div>
+          <div style="display:flex;justify-content:center;gap:4px;margin-bottom:4px">${teams.b.map(p=>`<img src="${PHOTOS[p]}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>`).join("")}</div>
+          <div style="font-size:11px;color:#D44A38">${teams.b.join(" & ")}</div>
+          <div style="font-size:24px;font-weight:800;color:#D44A38">${tm.holesB}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${["front","back","overall"].map(leg=>{
+          const s=na[leg];
+          const w=s.winner;
+          const wCol=w==="A"?"#2B7DD6":w==="B"?"#D44A38":"var(--muted)";
+          return`<div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">${leg==="overall"?"Total":"Nassau "+leg.charAt(0).toUpperCase()+leg.slice(1)}</div>
+            <div style="font-size:13px;font-weight:700;color:${wCol}">${w==="Tied"?"Tied":w==="A"?teams.a.join(" & "):teams.b.join(" & ")}</div>
+            <div style="font-size:11px;color:var(--muted)">${Number.isInteger(s.a)?s.a:s.a.toFixed(1)} – ${Number.isInteger(s.b)?s.b:s.b.toFixed(1)}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }).join("");
+
   return`<div class="pg">
   <!-- Weather -->
-  <div class="card" id="wx-card" style="margin-bottom:12px">
-    ${buildWeatherCard()}
-  </div>
+  <div class="card" id="wx-card" style="margin-bottom:10px">${buildWeatherCard()}</div>
 
-  <!-- Share button -->
-  <button onclick="shareScores()" style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:10px;padding:11px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
-    <span style="font-size:18px">🔗</span> Share live scores with the group
+  <!-- Share -->
+  <button onclick="shareScores()" style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:10px;padding:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <span>🔗</span> Share live scores with the group
   </button>
 
-  <div class="stitle">Overall points (gross)</div>
-  ${st.map((s,i)=>`<div class="row-card">
-    <span style="font-size:22px;width:24px;text-align:center">${MEDALS[i]}</span>
+  <!-- Match Trackers -->
+  ${matchBanners?`<div class="stitle">Live match status</div>${matchBanners}`:""}
+
+  <!-- Trip leaderboard -->
+  <div class="stitle" style="margin-top:4px">Trip points</div>
+  ${st.map((s,i)=>{
+    const barW=st[0].total>0?Math.round(s.total/st[0].total*100):0;
+    return`<div class="row-card" style="border-left:3px solid ${PC[s.p]}">
+      <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]}</span>
+      ${av(s.p,"lg")}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
+        <div style="margin-top:5px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+          <div style="height:4px;background:${PC[s.p]};border-radius:2px;width:${barW}%;transition:width 0.4s"></div>
+        </div>
+        <div class="muted" style="margin-top:4px;font-size:11px">${s.rp}pt stroke · ${s.sk} skins · ${s.ctp} CTP · ${s.ld} LD</div>
+      </div>
+      <div style="font-size:32px;font-weight:800;color:${PC[s.p]};min-width:36px;text-align:right">${s.total}</div>
+    </div>`;
+  }).join("")}
+
+  <!-- Net standings -->
+  ${anyNet?`<div class="stitle" style="margin-top:12px">Net leaderboard</div>
+  ${ns.filter(x=>x.played>0).map((s,i)=>`<div class="row-card">
+    <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]||"·"}</span>
     ${av(s.p,"lg")}
     <div style="flex:1;min-width:0">
-      <div style="font-weight:700;color:${PC[s.p]};font-size:16px">${s.p}</div>
-      <div class="muted" style="margin-top:2px">${s.rp} stroke · ${s.sk} skins · ${s.ctp} CTP · ${s.ld} LD</div>
+      <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
+      <div class="muted" style="margin-top:2px">${s.nets.map((n,ri)=>`R${ri+1}: ${n}`).join(" · ")}</div>
     </div>
-    <div style="font-size:30px;font-weight:800;color:${PC[s.p]}">${s.total}</div>
-  </div>`).join("")}
-  <div class="stitle" style="margin-top:16px">Round results</div>
+    <div style="text-align:right">
+      <div style="font-size:26px;font-weight:800;color:${PC[s.p]}">${s.total}</div>
+      <div class="muted" style="font-size:11px">net · ${s.played}R</div>
+    </div>
+  </div>`).join("")}`:""}
+
+  <!-- Round results -->
+  <div class="stitle" style="margin-top:12px">Round results</div>
   ${ROUNDS.map(r=>{
     const rp=calcRPts(r);
-    const tots=PLAYERS.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
-    const parT=pSum(S.pars[r]);
-    const teams=ROUND_TEAMS[r];
     const rPlayers=ROUND_PLAYERS[r]||PLAYERS;
-    const teamBadge=p=>{
-      if(!teams)return"";
-      const t=teams.a.includes(p)?"A":teams.b.includes(p)?"B":"";
-      const col=teams.a.includes(p)?"#2B7DD6":"#D44A38";
-      return t?`<span style="font-size:10px;background:${col}22;color:${col};border-radius:4px;padding:1px 5px;font-weight:600">Team ${t}</span>`:"";
-    };
+    const tots=rPlayers.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+    const parT=pSum(CDATA[r].par);
+    const teams=ROUND_TEAMS[r];
     return`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
-        <span style="font-weight:600">Round ${r}</span><span class="muted">${CDATA[r].short}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span class="muted">${TEETIME[r]}</span>
-        ${!rPlayers.includes("Joey")?`<span style="font-size:10px;background:rgba(212,74,56,0.12);color:#f07060;border-radius:4px;padding:1px 6px">Joey sits out</span>`:""}
-        ${teams?`<span style="font-size:10px;background:rgba(34,168,97,0.12);color:var(--green);border-radius:4px;padding:1px 6px">Team format</span>`:""}
-      </div>
-      ${teams?`<div style="display:flex;gap:6px;margin-bottom:10px">
-        <div style="flex:1;background:rgba(43,125,214,0.1);border:0.5px solid rgba(43,125,214,0.3);border-radius:8px;padding:7px 8px">
-          <div style="font-size:10px;color:#2B7DD6;font-weight:600;margin-bottom:4px">Team A</div>
-          <div style="display:flex;gap:6px">${teams.a.map(p=>`<div style="display:flex;align-items:center;gap:4px">${av(p,"sm")}<span style="font-size:12px;font-weight:600;color:${PC[p]}">${p}</span></div>`).join("")}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <div>
+          <div style="font-weight:600">Round ${r} <span class="muted" style="font-weight:400">· ${CDATA[r].short}</span></div>
+          <div class="muted" style="margin-top:2px">${TEETIME[r]}</div>
         </div>
-        <div style="flex:1;background:rgba(212,74,56,0.1);border:0.5px solid rgba(212,74,56,0.3);border-radius:8px;padding:7px 8px">
-          <div style="font-size:10px;color:#D44A38;font-weight:600;margin-bottom:4px">Team B</div>
-          <div style="display:flex;gap:6px">${teams.b.map(p=>`<div style="display:flex;align-items:center;gap:4px">${av(p,"sm")}<span style="font-size:12px;font-weight:600;color:${PC[p]}">${p}</span></div>`).join("")}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          ${!rPlayers.includes("Joey")?`<span style="font-size:10px;background:rgba(212,74,56,0.12);color:#f07060;border-radius:4px;padding:1px 6px">Joey out</span>`:""}
+          ${teams?`<span style="font-size:10px;background:rgba(34,168,97,0.12);color:var(--green);border-radius:4px;padding:1px 6px">Best Ball</span>`:""}
         </div>
-      </div>`:""}
-      ${tots.length===0?`<div class="muted">Not started yet</div>`:tots.map((x,i)=>`
-        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
-          <span style="font-size:15px;width:20px">${MEDALS[i]}</span>
+      </div>
+      ${tots.length===0?`<div class="muted" style="padding-top:6px">Not started</div>`:tots.map((x,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
           ${av(x.p,"sm")}
           <span style="color:${PC[x.p]};font-weight:600;flex:1">${x.p}</span>
-          ${teamBadge(x.p)}
+          ${teams?`<span style="font-size:10px;padding:1px 5px;border-radius:4px;${teams.a.includes(x.p)?"background:rgba(43,125,214,0.15);color:#2B7DD6":"background:rgba(212,74,56,0.15);color:#D44A38"}">
+            ${teams.a.includes(x.p)?teams.a.join(" & "):teams.b.join(" & ")}</span>`:""}
           ${diffTag(x.t,parT)}
-          <span style="font-weight:700;font-size:17px;min-width:28px;text-align:right">${x.t}</span>
-          <span style="color:var(--green);font-size:11px;min-width:20px;text-align:right">${rp[x.p]?"+"+rp[x.p]:"—"}</span>
+          <span style="font-weight:700;font-size:17px">${x.t}</span>
         </div>`).join("")}
     </div>`;
   }).join("")}
-  ${anyNet?`
-  <div class="stitle" style="margin-top:16px">Net leaderboard</div>
-  ${ns.filter(x=>x.played>0).map((s,i)=>{
-    const p=s.p;
-    const hi=HI[p];
-    const ch=hi!=null?Math.round(hi*(CDATA[RND].tees[S.teeSet?.[RND]||"Blue"]?.s||113)/113):null;
-    return`<div class="row-card">
-      <span style="font-size:22px;width:24px;text-align:center">${MEDALS[i]||"·"}</span>
-      ${av(p,"lg")}
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:${PC[p]};font-size:15px">${p}</div>
-        <div class="muted" style="margin-top:2px">
-          ${s.nets.map((n,ri)=>`R${ri+1}: ${n}`).join(" · ")}
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:24px;font-weight:800;color:${PC[p]}">${s.total}</div>
-        <div class="muted" style="font-size:11px">net ${s.played}R</div>
-      </div>
-    </div>`;
-  }).join("")}`:""}
 
-  <div class="stitle" style="margin-top:16px">Course guide</div>
+  <!-- Course guide -->
+  <div class="stitle" style="margin-top:12px">Course guide</div>
   ${ROUNDS.map(r=>{
     const cd=CDATA[r];
     const tees=Object.entries(cd.tees);
@@ -523,40 +634,34 @@ function buildBoard(){
           <div style="font-weight:600">Round ${r} — ${cd.short}</div>
           <div class="muted" style="margin-top:2px">${cd.designer} · Par ${cd.par.reduce((a,b)=>a+b,0)}</div>
         </div>
-        <div style="text-align:right">
-          <div class="muted">${TEETIME[r]}</div>
-        </div>
+        <div class="muted">${TEETIME[r]}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(${tees.length},1fr);gap:6px">
-        ${tees.map(([name,t])=>`<div style="background:var(--bg3);border-radius:8px;padding:7px 6px;text-align:center">
+      <div style="display:grid;grid-template-columns:repeat(${tees.length},1fr);gap:5px">
+        ${tees.map(([name,t])=>`<div style="background:var(--bg3);border-radius:7px;padding:7px 4px;text-align:center">
           <div style="font-size:10px;color:var(--muted);margin-bottom:2px">${name}</div>
-          <div style="font-size:13px;font-weight:700">${t.y.toLocaleString()}</div>
-          <div style="font-size:10px;color:var(--muted)">${t.r} / ${t.s}</div>
+          <div style="font-size:12px;font-weight:700">${t.y.toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--muted)">${t.r}/${t.s}</div>
         </div>`).join("")}
       </div>
       ${cd.note?`<div style="margin-top:8px;font-size:11px;color:#C8901A">${cd.note}</div>`:""}
     </div>`;
   }).join("")}
-  <div class="stitle" style="margin-top:16px">Handicap indices</div>
+
+  <!-- Handicaps -->
+  <div class="stitle" style="margin-top:12px">Handicap indices</div>
   <div class="card">
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-      ${PLAYERS.map(p=>{
-        const hi=HI[p];
-        return`<div style="display:flex;align-items:center;gap:10px">
-          <img src="${PHOTOS[p]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};flex-shrink:0"/>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:${PC[p]};font-weight:600;margin-bottom:3px">${p}</div>
-            <input type="number" inputmode="decimal" step="0.1" min="0" max="54"
-              value="${hi!==null?hi:""}"
-              placeholder="Index"
-              style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:7px;padding:6px 8px;color:var(--text);font-size:14px;font-weight:600;outline:none"
-              onchange="updateHI('${p}',this.value)"
-              onfocus="this.select()" />
-          </div>
-        </div>`;
-      }).join("")}
+      ${PLAYERS.map(p=>{const hi=HI[p];return`<div style="display:flex;align-items:center;gap:10px">
+        <img src="${PHOTOS[p]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};flex-shrink:0"/>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:${PC[p]};font-weight:600;margin-bottom:3px">${p}</div>
+          <input type="number" inputmode="decimal" step="0.1" min="0" max="54" value="${hi!==null?hi:""}" placeholder="Index"
+            style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:7px;padding:6px 8px;color:var(--text);font-size:14px;font-weight:600;outline:none"
+            onchange="updateHI('${p}',this.value)" onfocus="this.select()"/>
+        </div>
+      </div>`;}).join("")}
     </div>
-    <div class="muted" style="margin-top:8px">Course handicaps recalculate automatically when you pick tees</div>
+    <div class="muted" style="margin-top:8px">Course handicaps recalculate automatically</div>
   </div>
   </div>`;
 }
@@ -568,6 +673,31 @@ function buildLiveLeaderboard(){
     for(let h=17;h>=0;h--){if(ps(S.scores[RND][p][h]))return h+1;}return 0;
   });
   const maxThru = Math.max(...thruH);
+
+  // Build team match bar HTML (separate from lb cells)
+  const tm=calcTeamMatch(RND);
+  if(tm&&tm.thru>0){
+    const teams=ROUND_TEAMS[RND];
+    const col=tm.color;
+    setTimeout(()=>{
+      const mb=document.getElementById("match-bar");
+      if(mb){
+        const diff=tm.diff;
+        const leader=diff>0?"A":diff<0?"B":null;
+        const lCol=leader==="A"?"#2B7DD6":leader==="B"?"#D44A38":"var(--muted)";
+        mb.innerHTML=`<div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;gap:3px">${teams.a.map(p=>`<img src="${PHOTOS[p]}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;border:1.5px solid #2B7DD6"/>`).join("")}</div>
+          <span style="font-size:11px;color:#2B7DD6;font-weight:600">${teams.a.join(" & ")}</span>
+          <div style="flex:1;text-align:center;font-size:13px;font-weight:800;color:${lCol}">${tm.status}</div>
+          <span style="font-size:11px;color:#D44A38;font-weight:600">${teams.b.join(" & ")}</span>
+          <div style="display:flex;gap:3px">${teams.b.map(p=>`<img src="${PHOTOS[p]}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;border:1.5px solid #D44A38"/>`).join("")}</div>
+        </div>`;
+        mb.style.display="block";
+      }
+    },0);
+  } else {
+    setTimeout(()=>{const mb=document.getElementById("match-bar");if(mb)mb.style.display="none";},0);
+  }
 
   return rp.map(p=>{
     const rt = runTot(RND,p,18);
@@ -696,6 +826,9 @@ function buildScores(){
     <div id="rnd-strip">
       ${ROUNDS.map(r=>`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r})" style="font-size:12px">R${r} · ${CDATA[r].short}</button>`).join("")}
     </div>
+
+    <!-- Team match bar (shown when teams playing) -->
+    <div id="match-bar" style="display:none;padding:8px 14px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0"></div>
 
     <!-- Course info + tee selector -->
     <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2)">
@@ -937,6 +1070,8 @@ function adjScore(p,delta){
   S.scores[RND][p][HOLE]=String(nv);
   saveS();
   if(navigator.vibrate) navigator.vibrate(8);
+  const newV=ps(S.scores[RND][p][HOLE]);
+  checkCelebration(p,newV,CDATA[RND].par[HOLE]);
   render();
   checkAutoAdvance();
 }
@@ -945,6 +1080,7 @@ function quickPick(p,v){
   S.scores[RND][p][HOLE]=String(v);
   saveS();
   if(navigator.vibrate)navigator.vibrate(8);
+  checkCelebration(p,v,CDATA[RND].par[HOLE]);
   render();
   checkAutoAdvance();
 }
@@ -1033,12 +1169,117 @@ function buildWeatherCard(){
 }
 
 // ── AUTO-ADVANCE ──────────────────────────────────────────
+// ── CELEBRATION ──────────────────────────────────────────
+function celebrate(icon,text,sub){
+  const el=document.getElementById("celebrate");
+  document.getElementById("cel-icon").textContent=icon;
+  document.getElementById("cel-text").textContent=text;
+  document.getElementById("cel-sub").textContent=sub||"Tap to dismiss";
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),3000);
+}
+function checkCelebration(p,v,par){
+  if(!v||!par)return;
+  const d=v-par;
+  if(d<=-2)celebrate("🦅","EAGLE!",`${p} goes ${d===2?"2":"3+"} under par`);
+  else if(d===-1)celebrate("🐦","BIRDIE!",`${p} goes 1 under`);
+}
+
+// ── ROUND SUMMARY ─────────────────────────────────────────
+function showRoundSummary(r){
+  const rp=ROUND_PLAYERS[r]||PLAYERS;
+  const pars=CDATA[r].par;
+  const parT=pars.reduce((a,b)=>a+b,0);
+  const tots=rp.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+  const {wins}=calcSkins(r);
+  const tm=calcTeamMatch(r);
+  const sb=S.sb[r]||{};
+
+  let html=`<div style="text-align:center;padding:20px 0 24px">
+    <div style="font-size:40px;margin-bottom:8px">⛳</div>
+    <div style="font-size:22px;font-weight:800">Round ${r} Complete</div>
+    <div style="color:var(--muted);margin-top:4px">${CDATA[r].name}</div>
+  </div>`;
+
+  // Stroke results
+  html+=`<div class="stitle">Stroke results</div>`;
+  tots.forEach((x,i)=>{
+    const d=x.t-parT;
+    const dStr=d===0?"E":d>0?`+${d}`:`${d}`;
+    const dCol=d<0?"#4dd68a":d>0?"#f07060":"var(--text)";
+    html+=`<div class="row-card" style="border-left:3px solid ${PC[x.p]}">
+      <span style="font-size:22px;width:22px;text-align:center">${MEDALS[i]}</span>
+      ${av(x.p,"lg")}
+      <div style="flex:1">
+        <div style="font-weight:700;color:${PC[x.p]};font-size:16px">${x.p}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:28px;font-weight:800">${x.t}</div>
+        <div style="font-size:14px;font-weight:700;color:${dCol}">${dStr}</div>
+      </div>
+    </div>`;
+  });
+
+  // Team match result
+  if(tm&&tm.thru===18){
+    const teams=ROUND_TEAMS[r];
+    html+=`<div class="stitle" style="margin-top:16px">Match result</div>
+    <div class="card" style="border-left:3px solid ${tm.color};text-align:center;padding:16px">
+      <div style="font-size:24px;font-weight:800;color:${tm.color}">${tm.status}</div>
+      <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${["front","back","overall"].map(leg=>{
+          const s=tm.nassau[leg];
+          const w=s.winner;
+          const wLabel=w==="A"?teams.a.join(" & "):w==="B"?teams.b.join(" & "):"Tied";
+          return`<div style="background:var(--bg3);border-radius:7px;padding:7px">
+            <div style="font-size:9px;color:var(--muted)">${leg==="overall"?"Overall":"Nassau "+leg.charAt(0).toUpperCase()+leg.slice(1)}</div>
+            <div style="font-size:12px;font-weight:700;color:${w==="A"?"#2B7DD6":w==="B"?"#D44A38":"var(--muted)"};">${wLabel}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  // Skins
+  const skinWinners=rp.filter(p=>wins[p]>0);
+  if(skinWinners.length){
+    html+=`<div class="stitle" style="margin-top:16px">Skins</div>`;
+    skinWinners.sort((a,b)=>wins[b]-wins[a]).forEach(p=>{
+      html+=`<div class="row-card">
+        ${av(p,"md")}
+        <span style="color:${PC[p]};font-weight:600;flex:1">${p}</span>
+        <span style="font-size:22px;font-weight:800;color:#C8901A">${wins[p]} skin${wins[p]>1?"s":""}</span>
+      </div>`;
+    });
+  }
+
+  // CTP / LD
+  if(sb.ctp||sb.ld){
+    html+=`<div class="stitle" style="margin-top:16px">Specials</div><div class="card">`;
+    if(sb.ctp)html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">${av(sb.ctp,"sm")}<span>📍 CTP: <b style="color:${PC[sb.ctp]}">${sb.ctp}</b></span></div>`;
+    if(sb.ld)html+=`<div style="display:flex;align-items:center;gap:10px">${av(sb.ld,"sm")}<span>💨 Long Drive: <b style="color:${PC[sb.ld]}">${sb.ld}</b></span></div>`;
+    html+=`</div>`;
+  }
+
+  document.getElementById("round-summary-content").innerHTML=html;
+  document.getElementById("round-summary").classList.add("show");
+}
+function closeRoundSummary(){
+  document.getElementById("round-summary").classList.remove("show");
+}
+
 function checkAutoAdvance(){
   if(SHOW_CARD)return;
   const rp=ROUND_PLAYERS[RND]||PLAYERS;
   const allDone=rp.every(p=>ps(S.scores[RND][p][HOLE])!==null);
   if(allDone&&HOLE<17){
     setTimeout(()=>{HOLE++;render();if(navigator.vibrate)navigator.vibrate([20,50,20]);},600);
+  } else if(allDone&&HOLE===17){
+    // Round complete!
+    setTimeout(()=>{
+      if(navigator.vibrate)navigator.vibrate([50,100,50,100,200]);
+      showRoundSummary(RND);
+    },800);
   }
 }
 
