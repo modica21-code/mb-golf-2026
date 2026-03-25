@@ -200,8 +200,12 @@ const CDATA = {
 const COURSES = Object.fromEntries(Object.entries(CDATA).map(([k,v])=>[k,v.name]));
 const mkE = () => Object.fromEntries(PLAYERS.map(p=>[p,Array(18).fill("")]));
 
-// Handicap indices — update when Joey & Jake confirmed
-const HI = {Modes:4.0, Jake:null, Joey:null, McGins:5.8};
+// Handicap indices — editable in-app via Board tab
+let HI = {Modes:4.0, Jake:null, Joey:null, McGins:5.8};
+const HI_KEY = "mb-golf-hi";
+function loadHI(){try{const d=localStorage.getItem(HI_KEY);if(d)HI={...HI,...JSON.parse(d)};}catch(e){}}
+function saveHI(){try{localStorage.setItem(HI_KEY,JSON.stringify(HI));}catch(e){}}
+function updateHI(p,v){const n=parseFloat(v);HI[p]=isNaN(n)?null:Math.round(n*10)/10;saveHI();render();}
 
 // Course handicap = HI × (Slope / 113), rounded
 function courseHdcp(player, round){
@@ -252,7 +256,7 @@ const av=(p,sz="md")=>`<img src="${PHOTOS[p]}" class="av av-${sz}" style="border
 // Running total vs par through holes completed
 function runTot(r,p,upTo){
   let s=0,par=0,done=0;
-  for(let h=0;h<upTo;h++){const n=ps(S.scores[r][p][h]);if(n){s+=n;par+=S.pars[r][h];done++;}}
+  for(let h=0;h<upTo;h++){const n=ps(S.scores[r][p][h]);if(n){s+=n;par+=CDATA[r].par[h];done++;}}
   return done===0?null:{score:s,par,diff:s-par,thru:done};
 }
 
@@ -343,19 +347,26 @@ function buildBoard(){
       ${cd.note?`<div style="margin-top:8px;font-size:11px;color:#C8901A">${cd.note}</div>`:""}
     </div>`;
   }).join("")}
-  <div class="stitle" style="margin-top:16px">Handicaps</div>
+  <div class="stitle" style="margin-top:16px">Handicap indices</div>
   <div class="card">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
       ${PLAYERS.map(p=>{
         const hi=HI[p];
-        return`<div style="text-align:center">
-          <img src="${PHOTOS[p]}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};margin-bottom:4px"/>
-          <div style="font-size:11px;color:${PC[p]};font-weight:600">${p}</div>
-          <div style="font-size:18px;font-weight:800;color:${hi!==null?"var(--text)":"var(--muted)"}">${hi!==null?hi:"—"}</div>
-          <div class="muted">index</div>
+        return`<div style="display:flex;align-items:center;gap:10px">
+          <img src="${PHOTOS[p]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};flex-shrink:0"/>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:${PC[p]};font-weight:600;margin-bottom:3px">${p}</div>
+            <input type="number" inputmode="decimal" step="0.1" min="0" max="54"
+              value="${hi!==null?hi:""}"
+              placeholder="Index"
+              style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:7px;padding:6px 8px;color:var(--text);font-size:14px;font-weight:600;outline:none"
+              onchange="updateHI('${p}',this.value)"
+              onfocus="this.select()" />
+          </div>
         </div>`;
       }).join("")}
     </div>
+    <div class="muted" style="margin-top:8px">Course handicaps recalculate automatically when you pick tees</div>
   </div>
   </div>`;
 }
@@ -420,16 +431,15 @@ function buildPlayerRows(){
 }
 
 function buildScoreCard(){
-  const pars=S.pars[RND]; const sc=S.scores[RND];
-  const cd=CDATA[RND];
-  const teeSet=S.teeSet?.[RND]||"Blue";
-  const teeData=cd.tees[teeSet]||Object.values(cd.tees)[1];
-  const chRow=PLAYERS.map(p=>{
-    const hi=HI[p];if(hi===null||hi===undefined)return`<div style="flex:1;text-align:center"><div style="font-size:10px;color:var(--muted)">${p}</div><div class="muted">—</div></div>`;
-    const ch=Math.round(hi*teeData.s/113);
-    return`<div style="flex:1;text-align:center"><div style="font-size:10px;color:${PC[p]};font-weight:600">${p}</div><div style="font-size:14px;font-weight:700">${ch}</div></div>`;
-  }).join("");
-  function cell(h){return PLAYERS.map(p=>{const v=sc[p][h];return`<td style="color:${scoreClass(v,pars[h])};font-weight:600">${v||"·"}</td>`;}).join("");}
+  const pars=CDATA[RND].par; const sc=S.scores[RND];
+  function cell(h){
+    return PLAYERS.map(p=>{
+      const v=sc[p][h];
+      const strk=strokesOnHole(p,RND,h);
+      const dot=strk?`<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#C8901A;margin-left:2px;vertical-align:middle"></span>`:"";
+      return`<td style="color:${scoreClass(v,pars[h])};font-weight:600">${v||"·"}${dot}</td>`;
+    }).join("");
+  }
   function totRow(label,start,end){
     const parV=pSum(pars,start,end);
     const cells=PLAYERS.map(p=>{const v=tot(sc[p].slice(start,end));const d=v?v-parV:null;return`<td style="font-weight:700;color:${d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)"}">${v||"—"}</td>`;}).join("");
@@ -437,15 +447,31 @@ function buildScoreCard(){
   }
   return`<div style="padding:0 14px 14px;overflow-x:auto">
     <table class="score-table">
-      <thead><tr><th>H</th>${PLAYERS.map(p=>`<th style="color:${PC[p]}">${p[0]}</th>`).join("")}</tr></thead>
+      <thead><tr>
+        <th>H</th>
+        ${PLAYERS.map(p=>`<th style="color:${PC[p]}">${p[0]}</th>`).join("")}
+      </tr></thead>
       <tbody>
-        ${Array.from({length:9},(_,h)=>`<tr style="background:${h===HOLE?"rgba(34,168,97,0.08)":""}"><td style="${h===HOLE?"color:var(--green);font-weight:700":""}">${h+1}</td>${cell(h)}</tr>`).join("")}
+        ${Array.from({length:9},(_,h)=>{
+          const active=h===HOLE;
+          return`<tr style="background:${active?"rgba(34,168,97,0.08)":""}">
+            <td style="${active?"color:var(--green);font-weight:700":""}">
+              ${h+1}<sup style="font-size:8px;color:var(--muted)">p${pars[h]}</sup>
+            </td>${cell(h)}</tr>`;
+        }).join("")}
         ${totRow("OUT",0,9)}
-        ${Array.from({length:9},(_,h)=>`<tr style="background:${h+9===HOLE?"rgba(34,168,97,0.08)":""}"><td style="${h+9===HOLE?"color:var(--green);font-weight:700":""}">${h+10}</td>${cell(h+9)}</tr>`).join("")}
+        ${Array.from({length:9},(_,h)=>{
+          const active=h+9===HOLE;
+          return`<tr style="background:${active?"rgba(34,168,97,0.08)":""}">
+            <td style="${active?"color:var(--green);font-weight:700":""}">
+              ${h+10}<sup style="font-size:8px;color:var(--muted)">p${pars[h+9]}</sup>
+            </td>${cell(h+9)}</tr>`;
+        }).join("")}
         ${totRow("IN",9,18)}
         ${totRow("TOT",0,18)}
       </tbody>
     </table>
+    <div style="margin-top:8px;font-size:11px;color:var(--muted)">⬤ = stroke received</div>
   </div>`;
 }
 
@@ -714,7 +740,7 @@ function mfTogT(team,p){MF[team]=MF[team].includes(p)?MF[team].filter(x=>x!==p):
 function addMatch(){if(!MF.winner)return;S.matches.push({...MF,id:Date.now()});saveS();SHOW_MF=false;MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};render();}
 function delMatch(id){S.matches=S.matches.filter(m=>m.id!==id);saveS();render();}
 
-loadS();render();
+loadHI();loadS();render();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
