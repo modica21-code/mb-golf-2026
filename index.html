@@ -201,7 +201,7 @@ const COURSES = Object.fromEntries(Object.entries(CDATA).map(([k,v])=>[k,v.name]
 const mkE = () => Object.fromEntries(PLAYERS.map(p=>[p,Array(18).fill("")]));
 
 // Handicap indices — editable in-app via Board tab
-let HI = {Modes:4.0, Jake:null, Joey:null, McGins:5.8};
+let HI = {Modes:4.0, Jake:21.3, Joey:12.0, McGins:5.8};
 const HI_KEY = "mb-golf-hi";
 function loadHI(){try{const d=localStorage.getItem(HI_KEY);if(d)HI={...HI,...JSON.parse(d)};}catch(e){}}
 function saveHI(){try{localStorage.setItem(HI_KEY,JSON.stringify(HI));}catch(e){}}
