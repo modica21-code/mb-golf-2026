@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MB Golf 2026" />
+<meta name="theme-color" content="#0f1a12" />
+<title>MB Golf 2026</title>
+<link rel="manifest" href="manifest.json" />
+<style>
+  :root {
+    --green: #22A861;
+    --green-d: #1a8a50;
+    --gold: #C8901A;
+    --blue: #2B7DD6;
+    --red: #D44A38;
+    --bg: #0f1a12;
+    --bg2: #162019;
+    --bg3: #1e2d22;
+    --card: #1c2b1f;
+    --border: rgba(255,255,255,0.1);
+    --border2: rgba(255,255,255,0.18);
+    --text: #f0ede8;
+    --muted: rgba(240,237,232,0.5);
+    --radius: 12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; height: 100%; }
+  #header { padding: calc(var(--safe-top) + 12px) 16px 12px; background: var(--bg2); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  #header-dots { margin-left: auto; display: flex; gap: 4px; }
+  #tab-bar { display: flex; background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #tab-bar::-webkit-scrollbar { display: none; }
+  #content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 14px calc(var(--safe-bot) + 14px); }
+
+  /* ── Tab buttons ── */
+  .tab-btn { flex: 1; min-width: 62px; padding: 10px 4px 8px; background: none; border: none; border-bottom: 2.5px solid transparent; cursor: pointer; font-size: 11px; color: var(--muted); font-weight: 400; display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; transition: color 0.15s; }
+  .tab-btn.active { border-bottom-color: var(--green); color: var(--green); font-weight: 600; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .row-card { display: flex; align-items: center; gap: 11px; background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 9px; }
+
+  /* ── Typography ── */
+  .stitle { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .lbl { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block; }
+
+  /* ── Form elements ── */
+  .inp { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; width: 100%; }
+  .inp:focus { border-color: var(--green); }
+  .sel { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 14px; outline: none; width: 100%; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.4)' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+  .score-inp { width: 38px; height: 32px; border: 0.5px solid var(--border); border-radius: 7px; text-align: center; font-size: 14px; font-weight: 600; outline: none; background: var(--bg3); color: var(--text); }
+  .score-inp:focus { border-color: var(--green); }
+
+  /* ── Buttons ── */
+  .pill-btn { padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border2); background: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .pill-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .action-btn { background: var(--green); color: #fff; border: none; border-radius: 9px; padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 0; line-height: 1; }
+
+  /* ── Diff pills ── */
+  .diff-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .diff-pos { background: rgba(212,74,56,0.2); color: #f07060; }
+  .diff-neg { background: rgba(34,168,97,0.2); color: #4dd68a; }
+  .diff-e { background: rgba(255,255,255,0.1); color: var(--muted); }
+
+  /* ── Avatars ── */
+  .av { border-radius: 50%; object-fit: cover; border: 2px solid; flex-shrink: 0; }
+  .av-sm { width: 28px; height: 28px; }
+  .av-md { width: 36px; height: 36px; }
+  .av-lg { width: 44px; height: 44px; }
+
+  /* ── Score table ── */
+  .score-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .score-table th { padding: 6px 3px; text-align: center; font-weight: 500; font-size: 11px; color: var(--muted); }
+  .score-table th:first-child { text-align: left; padding-left: 6px; }
+  .score-table td { padding: 2px 2px; text-align: center; border-top: 0.5px solid var(--border); }
+  .score-table td:first-child { padding-left: 6px; color: var(--muted); font-size: 11px; text-align: left; }
+  .score-table tr.tot-row td { background: var(--bg3); font-weight: 600; padding: 5px 2px; }
+  .score-table tr.grand-row td { font-weight: 700; font-size: 14px; padding: 7px 2px; border-top: 1px solid var(--border2); background: var(--bg2); }
+
+  /* ── Skins grid ── */
+  .skin-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; margin-top: 8px; }
+  .skin-cell { border-radius: 5px; padding: 4px 2px; text-align: center; border: 0.5px solid var(--border); background: var(--bg3); }
+
+  /* ── Award card ── */
+  .award-card { display: flex; gap: 13px; align-items: flex-start; border-radius: var(--radius); padding: 13px 14px; margin-bottom: 9px; border: 0.5px solid var(--border); background: var(--card); }
+
+  /* ── Team toggle ── */
+  .ptog { width: 100%; padding: 7px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 5px; }
+  .ptog.on { border-color: currentColor; font-weight: 600; }
+
+  /* ── Section divider ── */
+  .sec-hdr { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 12px; }
+  .sec-hdr .stitle { margin: 0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div style="width:38px;height:38px;background:var(--green);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">⛳</div>
+    <div>
+      <div style="font-weight:700;font-size:17px">MB Golf 2026</div>
+      <div class="muted">Mar 26–28 · 4 rounds</div>
+    </div>
+    <div id="header-dots"></div>
+  </div>
+  <div id="tab-bar"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+const PHOTOS = {'Modes': 'data:image/jpeg;base64,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', 'Jake': 'data:image/jpeg;base64,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', 'Joey': 'data:image/jpeg;base64,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', 'McGins': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCABQAFADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCPXNZSe3JWaAvL+7wnPGCOKxvFcl1DrpENvKxmhQqQMblKKDhvrxVa6uZxFbhdLhghaQqJFVs+4yfqPzra8QTF9XsldyVS3hCqeAoKqeK44XTil5/odHtGryX9bmomnajc28M5gBSRA3DfdPcdKZcR3EcYhuBGu0ZGWXd+pH6V00E6Q2ttC7+XuQ/Kp+UYNcf4z06XVE+2WykiFMMrDBYA5JHrj0rkjFzqu707nX9Ym6S8tjKuYLedri6ubtoQdzeUuCx9gD1NbHgG/j0q9uRcRzxPcxfuTcfKpwc4JwOeaxIbS3aSW88mTfHwr7/lP4Y/rWhpcaXMbF7czRRKGKxO+cgkgd8fzrqq6wcXsc0EtZdUek2V/wD2ojLGwQKPvxOHB7YqyLYtJmVklX0aMZ/OsDwlbx2NvfLZwGMvJlVkYYLbfoMDpW+JyrNkZVYt5YeueleXJOMrROqDvG5jeJrG2e3tYtxhRGYrtGRzisWGyu7fP2PUtvfG4rXQeIfnSAMDz6fhWUsQO9uQm0DcfoK7KNOMqacnqctStKE2ktDlNOn1OKyaSXxDP9ndCsYkkOY+/GQM8d6p3WpXqyxyQ+IopMYUqrKWwBzguOM9/wAK5mTQrtjBJb3EeY23ruB/xqwNK1GZkjY2YZmxuSNtxzxjJNeiqMOxh7SXc7TSrq4vbl45NSbUEjBAzswpP3eFAz3NWoblWZElkZszBABKc7ieQF/D8q6zTfDWk6H4fSxFmJIwN0sicO792z1/XgU1rXTFRfs1oQ5GVeRskc4/A/4VlPDu75djWnXSVpbmZ9khvLXynUBCOi8Y+lP0zTIbBXKszMRjc3YUy0kaMNGSuFJGR061n+JdX+x6bL8rBjwCvvWtk9WZqUkrJlDxTqzwSRrpKWtyFUiUOsjMhHfOcEfT0rFttau50YvBCzJ822JnQe56nmtxbgJZwcNtJHlbUwzEDIAP5138Aa605m+1yg3ADK8QAKgjkdKiEoO65Sq0JQa1PKrLWbrUdRt7L/SYi8mwOlwHVM98beQPrU+vaxqujXiWSyO+Y1ZZ2ZBvHTpsPQj1qa48QC18Qahozb1e0kKB/l+df73A68it7TLgRWgZ9Us78SY3RT2yF4PVv/rfStnCnZXRinLV81vv1/A4GKU+WoJ/hFbHhVY7jxFYJNIixLL5jF2wPlGf5gVRgtYbqHdaALcIMvb9cj1T19x1qbQg66pC2xtoPJ28dKTnZN9iox5pJdz2YyC4k22syHylBZkO7BPIqS1062hO8QrubO4nnOetcBomqxaFe3LS+asBmZGSNc7j1Bx+PaugvPHdlFEzWlpczY4DSRtGmfTOOvHSqhJyim1uFSEYyaTvYygiQzSxsduJXTn61VufIW7gW4VZIwS5U9cjoB+JqpD4x8O3skk0upRRPMSzJLGy9exGMGrVjrGjanq8FtaXkV24jYsE3MFAx3I/rU21HF6j/ENpp5tIbm0hQTRy/exgglWzz+f8q53xhc6pa6Fpd1pl7IkMu+3kDSvgMvK4wcAkZ/Ku18QaXHFpO6GEyojZCHkLnqT6iuY1O6luPCr27qsaW86lcJjPbIznHBrKTSqXOiUHKm2eYXdtqd7OJ1jYyAcuJC5Y9yT1pkel6or7iCmeu4f410z5ZeWY/U01ZQgwZT9Cc/zrezOO6Lq3NwpGyZkIORswuPyrSgaPUpo5Cwhv0cN1wk+D+jfzrBaWVwcKV9DVYyTBhh1LZ4wCcUpQT2GpNM9HuoY4rl5ljIkdQyspwc9Dz2qKxmhngMkzTCJFYMHwCRnOSMEZ46iqug3013ahrh9z7cHjvWZd3j2nhy+kc/MI3Tg9ycf1rkVWUbQtqtD0XQi71E9Hqeb3UfmLPJCcohLAgY43f/Xre8AyOviK2cE42OG56jH/AOqsiBc2d6ACQIcE9v8APFWvC129jeLcRY82JSRxkYPBr0GeZHdH0bprCRE+Zn4wQ5BxXnnjaZokliBKGafK9vkXv9M8VreHvEk1xpZ8uNfPOQrk8L6YFcR4g1BL++V1iVWhQxGQHJfBzn2Gc8e9c11OSS6HbNuFNt9SmvlEjzogw5yVO0/1H6U8W9s/+pnCn+7MNv8A48OP5VXBNOA9TW1jjuNcDPzEsfc00v2pzVE3TNUI6XwqxMM5P3Vz0+lZ2upnwRI5yCZFIx3+bI/TNaHguXcbmHGehx9eKg8WQT2vhmzt54XTzzwCPvYXt69RXE4/vvmj0VO2H36M4e2BFhd4BwU/xpdCTE0rjptA/WtfQxNFaXGnz2LuL35IgyEEyYwMZ9zUUGjappVr52oWFxbRyNtUyoVyR1rtvvc83sd14cjWTRiIZP3ux8gdjzXGqjAfePvkVv8AgySYPcSx58qMrv8AYnis7WVWLVrtE4XzSQPrz/WuemuWpJd9TrrPnpRl20KoEg7r+VKN/wDeX8qaHpN1bnKf/9k='};
+const PLAYERS = ["Modes","Jake","Joey","McGins"];
+const PC = {Modes:"#C8901A",Jake:"#22A861",Joey:"#2B7DD6",McGins:"#D44A38"};
+const DPAR = [4,4,3,4,5,4,3,4,4,4,4,3,4,4,5,4,3,4];
+const ROUNDS = [1,2,3,4];
+const SKEY = "mb-golf-2026-v2";
+const MEDALS = ["🥇","🥈","🥉","🎖️"];
+const COURSES = {1:"TPC Myrtle Beach",2:"Barefoot - Dye",3:"Barefoot - Fazio",4:"Grande Dunes"};
+const TEETIME = {1:"2:33 PM · Thu 3/26",2:"8:23 AM · Fri 3/27",3:"2:34 PM · Fri 3/27",4:"1:07 PM · Sat 3/28"};
+const mkE = () => Object.fromEntries(PLAYERS.map(p=>[p,Array(18).fill("")]));
+
+let S = {
+  scores:{1:mkE(),2:mkE(),3:mkE(),4:mkE()},
+  pars:{1:[...DPAR],2:[...DPAR],3:[...DPAR],4:[...DPAR]},
+  courses:{...COURSES},
+  sb:{1:{ctp:"",ld:""},2:{ctp:"",ld:""},3:{ctp:"",ld:""},4:{ctp:"",ld:""}},
+  matches:[]
+};
+let TAB="board", RND=1, EDIT_PAR=false;
+let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
+let SHOW_MF=false;
+
+function loadS(){try{const d=localStorage.getItem(SKEY);if(d)S=JSON.parse(d);}catch(e){}}
+function saveS(){try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}}
+
+const ps=s=>{const n=parseInt(s);return isNaN(n)||n<=0?null:n;};
+const tot=arr=>{const ns=arr.map(ps).filter(n=>n!==null);return ns.length?ns.reduce((a,b)=>a+b,0):null;};
+const pSum=(arr,a=0,b=18)=>arr.slice(a,b).reduce((x,y)=>x+y,0);
+
+function calcSkins(r){
+  let carry=0;const wins=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  for(let h=0;h<18;h++){
+    const vs=PLAYERS.map(p=>ps(S.scores[r][p]?.[h]));
+    if(vs.some(v=>v===null))continue;
+    const mn=Math.min(...vs);const w=PLAYERS.filter((_,i)=>vs[i]===mn);
+    if(w.length===1){wins[w[0]]+=1+carry;carry=0;}else carry++;
+  }
+  return{wins,carry};
+}
+function calcRPts(r){
+  const tots=PLAYERS.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+  const PT=[4,3,2,1];const res={};let pv=-1,pp=0;
+  tots.forEach((x,i)=>{if(x.t!==pv){pp=PT[i]??0;pv=x.t;}res[x.p]=pp;});
+  return res;
+}
+function getStandings(){
+  const acc=Object.fromEntries(PLAYERS.map(p=>[p,{rp:0,sk:0,ctp:0,ld:0}]));
+  ROUNDS.forEach(r=>{
+    const rp=calcRPts(r);PLAYERS.forEach(p=>{acc[p].rp+=(rp[p]||0);});
+    const {wins}=calcSkins(r);PLAYERS.forEach(p=>{acc[p].sk+=wins[p];});
+    const sb=S.sb[r]||{};
+    if(PLAYERS.includes(sb.ctp))acc[sb.ctp].ctp++;
+    if(PLAYERS.includes(sb.ld))acc[sb.ld].ld++;
+  });
+  return PLAYERS.map(p=>({p,...acc[p],total:acc[p].rp+acc[p].sk+acc[p].ctp+acc[p].ld})).sort((a,b)=>b.total-a.total);
+}
+const sColor=s=>({eagle:"#C8901A",birdie:"#22A861",par:"#f0ede8",bogey:"#f07060",double:"#c0392b"}[s]||"var(--muted)");
+function scoreClass(v,par){const n=ps(v);if(!n||!par)return"var(--muted)";const d=n-par;if(d<=-2)return"#C8901A";if(d===-1)return"#22A861";if(d===0)return"#f0ede8";if(d===1)return"#f07060";return"#c0392b";}
+const diffTag=(v,par)=>{if(!v||!par)return`<span class="muted">—</span>`;const d=v-par,cls=d<0?"diff-neg":d>0?"diff-pos":"diff-e";return`<span class="diff-pill ${cls}">${d===0?"E":d>0?"+"+d:d}</span>`;};
+const av=(p,sz="md")=>`<img src="${PHOTOS[p]}" class="av av-${sz}" style="border-color:${PC[p]}" />`;
+
+// ── BOARD ──────────────────────────────────────────────────────
+function buildBoard(){
+  const st=getStandings();
+  return`<div class="stitle">Overall points</div>
+  ${st.map((s,i)=>`<div class="row-card">
+    <span style="font-size:22px;width:24px;text-align:center">${MEDALS[i]}</span>
+    ${av(s.p,"lg")}
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;color:${PC[s.p]};font-size:16px">${s.p}</div>
+      <div class="muted" style="margin-top:2px">${s.rp} stroke · ${s.sk} skins · ${s.ctp} CTP · ${s.ld} LD</div>
+    </div>
+    <div style="font-size:30px;font-weight:800;color:${PC[s.p]}">${s.total}</div>
+  </div>`).join("")}
+  <div class="stitle" style="margin-top:16px">Round results</div>
+  ${ROUNDS.map(r=>{
+    const rp=calcRPts(r);
+    const tots=PLAYERS.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+    const parT=pSum(S.pars[r]);
+    return`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
+      </div>
+      <div class="muted" style="margin-bottom:10px">${TEETIME[r]}</div>
+      ${tots.length===0?`<div class="muted">Not started yet</div>`:tots.map((x,i)=>`
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
+          <span style="font-size:15px;width:20px">${MEDALS[i]}</span>
+          ${av(x.p,"sm")}
+          <span style="color:${PC[x.p]};font-weight:600;flex:1">${x.p}</span>
+          ${diffTag(x.t,parT)}
+          <span style="font-weight:700;font-size:17px;min-width:28px;text-align:right">${x.t}</span>
+          <span style="color:var(--green);font-size:11px;min-width:20px;text-align:right">${rp[x.p]?"+"+rp[x.p]:"—"}</span>
+        </div>`).join("")}
+    </div>`;
+  }).join("")}`;
+}
+
+// ── SCORES ─────────────────────────────────────────────────────
+function buildScores(){
+  const pars=S.pars[RND]; const sc=S.scores[RND];
+  function cell(h){
+    return PLAYERS.map(p=>{const v=sc[p][h];return`<td><input class="score-inp" id="s-${RND}-${p}-${h}" type="number" inputmode="numeric" value="${v}" style="color:${scoreClass(v,pars[h])}" onblur="upScore(${RND},'${p}',${h},this.value)" onfocus="this.select()" /></td>`;}).join("");
+  }
+  function totRow(label,start,end){
+    const parV=pSum(pars,start,end);
+    const cells=PLAYERS.map(p=>{const v=tot(sc[p].slice(start,end));const d=v?v-parV:null;return`<td id="t-${RND}-${p}-${label}" style="font-weight:700;color:${d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)"}">${v||"—"}</td>`;}).join("");
+    return`<tr class="${label==="TOT"?"grand-row":"tot-row"}"><td>${label}/${parV}</td>${cells}</tr>`;
+  }
+  return`<div style="display:flex;gap:7px;margin-bottom:13px;flex-wrap:wrap">
+    ${ROUNDS.map(r=>`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r})">R${r} — ${COURSES[r]}</button>`).join("")}
+  </div>
+  <div style="overflow-x:auto;border-radius:10px;border:0.5px solid var(--border);margin-bottom:10px">
+    <table class="score-table">
+      <thead><tr><th>Hole</th>${PLAYERS.map(p=>`<th><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${PHOTOS[p]}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}" /><span style="color:${PC[p]};font-size:10px">${p}</span></div></th>`).join("")}</tr></thead>
+      <tbody>
+        ${Array.from({length:9},(_,h)=>`<tr><td>${h+1}${pars[h]!==4?`<sup style="font-size:9px">${pars[h]}</sup>`:""}</td>${cell(h)}</tr>`).join("")}
+        ${totRow("OUT",0,9)}
+        ${Array.from({length:9},(_,h)=>`<tr><td>${h+10}${pars[h+9]!==4?`<sup style="font-size:9px">${pars[h+9]}</sup>`:""}</td>${cell(h+9)}</tr>`).join("")}
+        ${totRow("IN",9,18)}
+        ${totRow("TOT",0,18)}
+      </tbody>
+    </table>
+  </div>
+  <button class="pill-btn${EDIT_PAR?" active":""}" onclick="toggleEditPar()">✏️ Edit par</button>`;
+}
+
+// ── SKINS ──────────────────────────────────────────────────────
+function buildSkins(){
+  const allSk=Object.fromEntries(PLAYERS.map(p=>[p,ROUNDS.reduce((s,r)=>s+calcSkins(r).wins[p],0)]));
+  const maxSk=Math.max(...Object.values(allSk));
+  const summary=`<div class="stitle">Trip skin totals</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
+    ${PLAYERS.map(p=>`<div style="background:var(--card);border:0.5px solid ${allSk[p]===maxSk&&maxSk>0?PC[p]:"var(--border)"};border-radius:10px;padding:10px 4px;text-align:center">
+      <img src="${PHOTOS[p]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};margin-bottom:4px" />
+      <div style="font-size:26px;font-weight:800;color:${allSk[p]===maxSk&&maxSk>0?PC[p]:"var(--text)"}">${allSk[p]}</div>
+      <div class="muted">skins</div>
+    </div>`).join("")}
+  </div>`;
+  const rounds=ROUNDS.map(r=>{
+    const {wins,carry}=calcSkins(r);
+    const any=PLAYERS.some(p=>S.scores[r][p].some(s=>ps(s)!==null));
+    if(!any)return`<div class="card" style="opacity:0.5"><span style="font-weight:600">Round ${r}</span> <span class="muted">— ${COURSES[r]} · Not started</span></div>`;
+    let c2=0;const hd=[];
+    for(let h=0;h<18;h++){
+      const vs=PLAYERS.map(p=>ps(S.scores[r][p]?.[h]));
+      if(vs.some(v=>v===null)){hd.push({h,skip:true});continue;}
+      const mn=Math.min(...vs);const w=PLAYERS.filter((_,i)=>vs[i]===mn);
+      if(w.length===1){hd.push({h,w:w[0],sk:1+c2});c2=0;}else{hd.push({h,tie:true});c2++;}
+    }
+    return`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        ${PLAYERS.map(p=>`<div style="flex:1;text-align:center;opacity:${wins[p]>0?1:0.3}">
+          <img src="${PHOTOS[p]}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}" /><br/>
+          <div style="font-size:22px;font-weight:800;color:${wins[p]>0?PC[p]:"var(--muted)"}">${wins[p]}</div>
+        </div>`).join("")}
+      </div>
+      <div class="skin-grid">
+        ${hd.map(({h,w,sk,tie})=>`<div class="skin-cell" style="${w?`border-color:${PC[w]};background:${PC[w]}22`:tie?"border-color:#f07060;background:rgba(240,112,96,0.1)":""}">
+          <div class="muted" style="font-size:9px">${h+1}</div>
+          <div style="font-size:11px;font-weight:${w?700:400};color:${w?PC[w]:tie?"#f07060":"var(--border2)"}">${w?w[0]:tie?"T":"—"}</div>
+          ${w&&sk>1?`<div style="font-size:9px;color:var(--gold)">×${sk}</div>`:""}
+        </div>`).join("")}
+      </div>
+      ${carry>0?`<div style="margin-top:8px;font-size:12px;color:#f07060">⚠️ ${carry} skin${carry>1?"s":""} unclaimed (final tied)</div>`:""}
+    </div>`;
+  }).join("");
+  return summary+`<div class="stitle">By round</div>`+rounds;
+}
+
+// ── BETS ───────────────────────────────────────────────────────
+function buildBets(){
+  const sbSec=`<div class="stitle">Closest to pin &amp; long drive</div>
+  ${ROUNDS.map(r=>{
+    const sb=S.sb[r]||{};
+    return`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
+      </div>
+      <div class="muted" style="margin-bottom:10px">${TEETIME[r]}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><span class="lbl">📍 Closest to pin</span>
+          <select class="sel" onchange="setSB(${r},'ctp',this.value)">
+            <option value="">— TBD —</option>
+            ${PLAYERS.map(p=>`<option value="${p}" ${sb.ctp===p?"selected":""}>${p}</option>`).join("")}
+          </select>
+          ${sb.ctp?`<div style="margin-top:6px;font-size:13px;font-weight:600;color:${PC[sb.ctp]}">${MEDALS[PLAYERS.indexOf(sb.ctp)]||""} ${sb.ctp}</div>`:""}
+        </div>
+        <div><span class="lbl">💨 Long drive</span>
+          <select class="sel" onchange="setSB(${r},'ld',this.value)">
+            <option value="">— TBD —</option>
+            ${PLAYERS.map(p=>`<option value="${p}" ${sb.ld===p?"selected":""}>${p}</option>`).join("")}
+          </select>
+          ${sb.ld?`<div style="margin-top:6px;font-size:13px;font-weight:600;color:${PC[sb.ld]}">${MEDALS[PLAYERS.indexOf(sb.ld)]||""} ${sb.ld}</div>`:""}
+        </div>
+      </div>
+    </div>`;
+  }).join("")}`;
+
+  const mForm=SHOW_MF?`<div class="card" style="border-color:rgba(34,168,97,0.35);margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><span class="lbl">Round</span>
+        <select class="sel" onchange="mfSet('round',parseInt(this.value))">
+          ${ROUNDS.map(r=>`<option value="${r}" ${MF.round===r?"selected":""}>${COURSES[r]}</option>`).join("")}
+        </select>
+      </div>
+      <div><span class="lbl">Format</span>
+        <select class="sel" onchange="mfSet('fmt',this.value)">
+          ${["Match Play","Nassau","Stroke Play","Skins","Best Ball","Scramble"].map(f=>`<option${MF.fmt===f?" selected":""}>${f}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><span class="lbl">Team 1</span>${PLAYERS.map(p=>`<button class="ptog${MF.t1.includes(p)?" on":""}" style="${MF.t1.includes(p)?"color:"+PC[p]+";border-color:"+PC[p]:"color:var(--muted)"}" onclick="mfTogT('t1','${p}')">${MF.t1.includes(p)?"✓ ":""}${p}</button>`).join("")}</div>
+      <div><span class="lbl">Team 2</span>${PLAYERS.map(p=>`<button class="ptog${MF.t2.includes(p)?" on":""}" style="${MF.t2.includes(p)?"color:"+PC[p]+";border-color:"+PC[p]:"color:var(--muted)"}" onclick="mfTogT('t2','${p}')">${MF.t2.includes(p)?"✓ ":""}${p}</button>`).join("")}</div>
+    </div>
+    <div style="margin-bottom:10px"><span class="lbl">Winner</span>
+      <select class="sel" onchange="mfSet('winner',this.value)">
+        <option value="">— select —</option>
+        ${PLAYERS.map(p=>`<option${MF.winner===p?" selected":""}>${p}</option>`).join("")}
+        ${MF.t1.length>1?`<option value="${MF.t1.join(" & ")}"${MF.winner===MF.t1.join(" & ")?" selected":""}>Team 1: ${MF.t1.join(" & ")}</option>`:""}
+        ${MF.t2.length>1?`<option value="${MF.t2.join(" & ")}"${MF.winner===MF.t2.join(" & ")?" selected":""}>Team 2: ${MF.t2.join(" & ")}</option>`:""}
+      </select>
+    </div>
+    <div style="margin-bottom:12px"><span class="lbl">Stake / notes</span><input class="inp" value="${MF.notes}" placeholder="$20 Nassau, beers, bragging rights…" onblur="mfSet('notes',this.value)" /></div>
+    <div style="display:flex;gap:8px"><button class="action-btn" style="flex:1" onclick="addMatch()">Save match</button><button class="pill-btn" onclick="toggleMF()">Cancel</button></div>
+  </div>`:"";
+
+  const matchList=S.matches.length===0&&!SHOW_MF
+    ?`<div class="muted" style="text-align:center;padding:20px 0">No matches logged yet</div>`
+    :[...S.matches].reverse().map(m=>`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="muted" style="margin-bottom:4px">R${m.round} · ${m.fmt} · ${COURSES[m.round]}</div>
+          ${(m.t1?.length||m.t2?.length)?`<div style="margin-bottom:5px;font-size:13px;color:var(--muted)">${m.t1?.join(" & ")||""}${m.t1?.length&&m.t2?.length?" vs ":""}${m.t2?.join(" & ")||""}</div>`:""}
+          <div style="font-size:14px">🏆 <span style="color:var(--green);font-weight:600">${m.winner}</span> wins${m.notes?` <span class="muted">· ${m.notes}</span>`:""}</div>
+        </div>
+        <button class="del-btn" onclick="delMatch(${m.id})">×</button>
+      </div>
+    </div>`).join("");
+
+  return sbSec+`<div class="sec-hdr"><div class="stitle">Matches &amp; bets</div><button class="action-btn" onclick="toggleMF()">+ Log</button></div>`+mForm+matchList;
+}
+
+// ── GLORY ──────────────────────────────────────────────────────
+function buildGlory(){
+  const st=getStandings();
+  const stats=Object.fromEntries(PLAYERS.map(p=>[p,{b:0,e:0,bo:0,db:0,rs:[]}]));
+  ROUNDS.forEach(r=>{
+    PLAYERS.forEach(p=>{
+      const t=tot(S.scores[r][p]);if(t)stats[p].rs.push(t);
+      S.scores[r][p].forEach((s,h)=>{const n=ps(s);if(!n)return;const d=n-S.pars[r][h];if(d<=-2)stats[p].e++;else if(d===-1)stats[p].b++;else if(d===1)stats[p].bo++;else if(d>1)stats[p].db++;});
+    });
+  });
+  const allSk=Object.fromEntries(PLAYERS.map(p=>[p,ROUNDS.reduce((s,r)=>s+calcSkins(r).wins[p],0)]));
+  const ctpW=Object.fromEntries(PLAYERS.map(p=>[p,ROUNDS.filter(r=>(S.sb[r]?.ctp||"")==p).length]));
+  const ldW=Object.fromEntries(PLAYERS.map(p=>[p,ROUNDS.filter(r=>(S.sb[r]?.ld||"")==p).length]));
+  const best=(fn,hi=true)=>{const vs=PLAYERS.map(p=>({p,v:fn(stats[p],p)})).filter(x=>x.v!=null&&x.v>0&&!isNaN(x.v));if(!vs.length)return null;return vs.sort((a,b)=>hi?b.v-a.v:a.v-b.v)[0].p;};
+  const avg=p=>stats[p].rs.length?stats[p].rs.reduce((a,b)=>a+b,0)/stats[p].rs.length:null;
+  const bA=PLAYERS.map(p=>({p,v:avg(p)})).filter(x=>x.v!=null).sort((a,b)=>a.v-b.v);
+  const wA=PLAYERS.map(p=>({p,v:avg(p)})).filter(x=>x.v!=null).sort((a,b)=>b.v-a.v);
+  const awards=[
+    {icon:"🏆",title:"Champion",player:st[0]?.total>0?st[0].p:null,desc:"Most total points on the trip"},
+    {icon:"🐦",title:"Bird Watcher",player:best(s=>s.b),desc:"Most birdies on the trip"},
+    {icon:"🦅",title:"Eagle Has Landed",player:best(s=>s.e),desc:"Most eagles — serious bragging rights"},
+    {icon:"💰",title:"Skin King",player:best((_,p)=>allSk[p]),desc:"Most skins across all 4 rounds"},
+    {icon:"📍",title:"Pin Seeker",player:best((_,p)=>ctpW[p]),desc:"Most closest-to-pin wins"},
+    {icon:"💨",title:"Big Bomber",player:best((_,p)=>ldW[p]),desc:"Most long drive wins"},
+    {icon:"⛳",title:"Scratch Golfer",player:bA.length?bA[0].p:null,desc:`Best scoring avg: ${bA[0]?.v?.toFixed(1)||"—"}`},
+    {icon:"🎳",title:"Bogey Machine",player:best(s=>s.bo+s.db),desc:"Most bogeys &amp; doubles combined"},
+    {icon:"🤡",title:"Good Walk Spoiled",player:wA.length?wA[0].p:null,desc:`Highest avg: ${wA[0]?.v?.toFixed(1)||"—"} — someone owes drinks`},
+    {icon:"🍺",title:"Beer Fund",player:st.length&&st[0].total>0?st[st.length-1].p:null,desc:"Last place — open the wallet"},
+  ];
+  return`<div class="stitle">Trip awards</div>
+  <div class="muted" style="margin-bottom:14px">Live — updates as scores are entered</div>
+  ${awards.map(a=>`<div class="award-card" style="border-left:3px solid ${a.player?PC[a.player]:"var(--border)"}">
+    ${a.player?`<img src="${PHOTOS[a.player]}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${PC[a.player]};flex-shrink:0" />`:`<span style="font-size:28px;line-height:1;flex-shrink:0">${a.icon}</span>`}
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:15px;color:${a.player?PC[a.player]:"var(--muted)"}">${a.player?`${a.icon} ${a.player}`:"TBD"}</div>
+      <div style="font-weight:600;font-size:13px;color:var(--text);margin:2px 0 3px">${a.title}</div>
+      <div class="muted">${a.desc}</div>
+    </div>
+  </div>`).join("")}`;
+}
+
+// ── RENDER ─────────────────────────────────────────────────────
+function render(){
+  document.getElementById("header-dots").innerHTML=PLAYERS.map(p=>`<img src="${PHOTOS[p]}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]}" />`).join("");
+  const tabs=[["board","⛳","Board"],["scores","📋","Scores"],["skins","💰","Skins"],["bets","🎰","Bets"],["glory","🥇","Glory"]];
+  document.getElementById("tab-bar").innerHTML=tabs.map(([id,ic,lb])=>`<button class="tab-btn${TAB===id?" active":""}" onclick="setTab('${id}')">${ic}<span>${lb}</span></button>`).join("");
+  document.getElementById("content").innerHTML=
+    TAB==="board"?buildBoard():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
+  document.getElementById("content").scrollTop=0;
+}
+
+// ── HANDLERS ───────────────────────────────────────────────────
+function setTab(t){TAB=t;SHOW_MF=false;render();}
+function setRnd(r){RND=r;render();}
+function toggleEditPar(){EDIT_PAR=!EDIT_PAR;render();}
+function upScore(r,p,h,v){S.scores[r][p][h]=v;saveS();const el=document.getElementById(`s-${r}-${p}-${h}`);if(el)el.style.color=scoreClass(v,S.pars[r][h]);refreshTots(r);}
+function refreshTots(r){["OUT","IN","TOT"].forEach(lbl=>{PLAYERS.forEach(p=>{const el=document.getElementById(`t-${r}-${p}-${lbl}`);if(!el)return;const start=lbl==="IN"?9:0,end=lbl==="OUT"?9:18;const v=tot(S.scores[r][p].slice(start,end));const par=pSum(S.pars[r],start,end);const d=v?v-par:null;el.textContent=v||"—";el.style.color=d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)";});});}
+function updatePar(r,h,v){S.pars[r][h]=parseInt(v)||4;saveS();refreshTots(r);}
+function setSB(r,k,v){S.sb[r]=S.sb[r]||{};S.sb[r][k]=v;saveS();render();}
+function toggleMF(){SHOW_MF=!SHOW_MF;render();}
+function mfSet(k,v){MF[k]=v;render();}
+function mfTogT(team,p){MF[team]=MF[team].includes(p)?MF[team].filter(x=>x!==p):[...MF[team],p];render();}
+function addMatch(){if(!MF.winner)return;S.matches.push({...MF,id:Date.now()});saveS();SHOW_MF=false;MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};render();}
+function delMatch(id){S.matches=S.matches.filter(m=>m.id!==id);saveS();render();}
+
+loadS();render();
+
+// Register service worker for offline support
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+</script>
+</body>
+</html>
