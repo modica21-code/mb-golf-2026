@@ -1,109 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="MB Golf 2026" />
-<meta name="theme-color" content="#0f1a12" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="MB Golf 2026"/>
+<meta name="theme-color" content="#0f1a12"/>
 <title>MB Golf 2026</title>
-<link rel="manifest" href="manifest.json" />
+<link rel="manifest" href="manifest.json"/>
 <style>
-  :root {
-    --green: #22A861;
-    --green-d: #1a8a50;
-    --gold: #C8901A;
-    --blue: #2B7DD6;
-    --red: #D44A38;
-    --bg: #0f1a12;
-    --bg2: #162019;
-    --bg3: #1e2d22;
-    --card: #1c2b1f;
-    --border: rgba(255,255,255,0.1);
-    --border2: rgba(255,255,255,0.18);
-    --text: #f0ede8;
-    --muted: rgba(240,237,232,0.5);
-    --radius: 12px;
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bot: env(safe-area-inset-bottom, 0px);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; }
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
-  input[type=number] { -moz-appearance: textfield; }
+:root{
+  --green:#22A861;--green-d:#1a8a50;--gold:#C8901A;--blue:#2B7DD6;--red:#D44A38;
+  --bg:#0f1a12;--bg2:#162019;--bg3:#1e2d22;--card:#1c2b1f;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.18);
+  --text:#f0ede8;--muted:rgba(240,237,232,0.5);
+  --radius:12px;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+input[type=number]{-moz-appearance:textfield;}
 
-  /* ── Layout ── */
-  #app { display: flex; flex-direction: column; height: 100%; }
-  #header { padding: calc(var(--safe-top) + 12px) 16px 12px; background: var(--bg2); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-  #header-dots { margin-left: auto; display: flex; gap: 4px; }
-  #tab-bar { display: flex; background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  #tab-bar::-webkit-scrollbar { display: none; }
-  #content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 14px calc(var(--safe-bot) + 14px); }
+/* Layout */
+#app{display:flex;flex-direction:column;height:100%;}
+#header{padding:calc(var(--safe-top) + 12px) 16px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+#header-dots{margin-left:auto;display:flex;gap:4px;}
+#tab-bar{display:flex;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+#tab-bar::-webkit-scrollbar{display:none;}
+#content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0;}
 
-  /* ── Tab buttons ── */
-  .tab-btn { flex: 1; min-width: 62px; padding: 10px 4px 8px; background: none; border: none; border-bottom: 2.5px solid transparent; cursor: pointer; font-size: 11px; color: var(--muted); font-weight: 400; display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; transition: color 0.15s; }
-  .tab-btn.active { border-bottom-color: var(--green); color: var(--green); font-weight: 600; }
+/* Tabs */
+.tab-btn{flex:1;min-width:62px;padding:10px 4px 8px;background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;font-size:11px;color:var(--muted);font-weight:400;display:flex;flex-direction:column;align-items:center;gap:3px;white-space:nowrap;}
+.tab-btn.active{border-bottom-color:var(--green);color:var(--green);font-weight:600;}
 
-  /* ── Cards ── */
-  .card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
-  .row-card { display: flex; align-items: center; gap: 11px; background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 9px; }
+/* Cards */
+.card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+.row-card{display:flex;align-items:center;gap:11px;background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:9px;}
+.pg{padding:14px 14px calc(var(--safe-bot) + 14px);}
 
-  /* ── Typography ── */
-  .stitle { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
-  .muted { color: var(--muted); font-size: 12px; }
-  .lbl { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block; }
+/* Typography */
+.stitle{font-size:15px;font-weight:600;color:var(--text);margin-bottom:12px;}
+.muted{color:var(--muted);font-size:12px;}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
 
-  /* ── Form elements ── */
-  .inp { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; width: 100%; }
-  .inp:focus { border-color: var(--green); }
-  .sel { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 14px; outline: none; width: 100%; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.4)' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
-  .score-inp { width: 38px; height: 32px; border: 0.5px solid var(--border); border-radius: 7px; text-align: center; font-size: 14px; font-weight: 600; outline: none; background: var(--bg3); color: var(--text); }
-  .score-inp:focus { border-color: var(--green); }
+/* Inputs */
+.inp{background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;width:100%;}
+.inp:focus{border-color:var(--green);}
+.sel{background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;outline:none;width:100%;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.4)' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+.score-inp{width:38px;height:32px;border:0.5px solid var(--border);border-radius:7px;text-align:center;font-size:14px;font-weight:600;outline:none;background:var(--bg3);color:var(--text);}
 
-  /* ── Buttons ── */
-  .pill-btn { padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border2); background: none; color: var(--muted); cursor: pointer; font-size: 13px; }
-  .pill-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
-  .action-btn { background: var(--green); color: #fff; border: none; border-radius: 9px; padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600; }
-  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 0; line-height: 1; }
+/* Buttons */
+.pill-btn{padding:7px 14px;border-radius:20px;border:0.5px solid var(--border2);background:none;color:var(--muted);cursor:pointer;font-size:13px;}
+.pill-btn.active{background:var(--green);color:#fff;border-color:var(--green);}
+.action-btn{background:var(--green);color:#fff;border:none;border-radius:9px;padding:10px 18px;cursor:pointer;font-size:14px;font-weight:600;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;line-height:1;}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--text);padding:6px;display:flex;align-items:center;justify-content:center;}
 
-  /* ── Diff pills ── */
-  .diff-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
-  .diff-pos { background: rgba(212,74,56,0.2); color: #f07060; }
-  .diff-neg { background: rgba(34,168,97,0.2); color: #4dd68a; }
-  .diff-e { background: rgba(255,255,255,0.1); color: var(--muted); }
+/* Diff pills */
+.diff-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;}
+.diff-pos{background:rgba(212,74,56,0.2);color:#f07060;}
+.diff-neg{background:rgba(34,168,97,0.2);color:#4dd68a;}
+.diff-e{background:rgba(255,255,255,0.1);color:var(--muted);}
 
-  /* ── Avatars ── */
-  .av { border-radius: 50%; object-fit: cover; border: 2px solid; flex-shrink: 0; }
-  .av-sm { width: 28px; height: 28px; }
-  .av-md { width: 36px; height: 36px; }
-  .av-lg { width: 44px; height: 44px; }
+/* Avatars */
+.av{border-radius:50%;object-fit:cover;border:2px solid;flex-shrink:0;}
+.av-sm{width:28px;height:28px;}
+.av-md{width:36px;height:36px;}
+.av-lg{width:44px;height:44px;}
 
-  /* ── Score table ── */
-  .score-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .score-table th { padding: 6px 3px; text-align: center; font-weight: 500; font-size: 11px; color: var(--muted); }
-  .score-table th:first-child { text-align: left; padding-left: 6px; }
-  .score-table td { padding: 2px 2px; text-align: center; border-top: 0.5px solid var(--border); }
-  .score-table td:first-child { padding-left: 6px; color: var(--muted); font-size: 11px; text-align: left; }
-  .score-table tr.tot-row td { background: var(--bg3); font-weight: 600; padding: 5px 2px; }
-  .score-table tr.grand-row td { font-weight: 700; font-size: 14px; padding: 7px 2px; border-top: 1px solid var(--border2); background: var(--bg2); }
+/* Score table (compact view) */
+.score-table{width:100%;border-collapse:collapse;font-size:12px;}
+.score-table th{padding:6px 3px;text-align:center;font-weight:500;font-size:11px;color:var(--muted);}
+.score-table th:first-child{text-align:left;padding-left:6px;}
+.score-table td{padding:2px 2px;text-align:center;border-top:0.5px solid var(--border);}
+.score-table td:first-child{padding-left:6px;color:var(--muted);font-size:11px;text-align:left;}
+.score-table tr.tot-row td{background:var(--bg3);font-weight:600;padding:5px 2px;}
+.score-table tr.grand-row td{font-weight:700;font-size:14px;padding:7px 2px;border-top:1px solid var(--border2);background:var(--bg2);}
 
-  /* ── Skins grid ── */
-  .skin-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; margin-top: 8px; }
-  .skin-cell { border-radius: 5px; padding: 4px 2px; text-align: center; border: 0.5px solid var(--border); background: var(--bg3); }
+/* Skins grid */
+.skin-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;margin-top:8px;}
+.skin-cell{border-radius:5px;padding:4px 2px;text-align:center;border:0.5px solid var(--border);background:var(--bg3);}
 
-  /* ── Award card ── */
-  .award-card { display: flex; gap: 13px; align-items: flex-start; border-radius: var(--radius); padding: 13px 14px; margin-bottom: 9px; border: 0.5px solid var(--border); background: var(--card); }
+/* Award card */
+.award-card{display:flex;gap:13px;align-items:flex-start;border-radius:var(--radius);padding:13px 14px;margin-bottom:9px;border:0.5px solid var(--border);background:var(--card);}
 
-  /* ── Team toggle ── */
-  .ptog { width: 100%; padding: 7px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font-size: 13px; text-align: left; margin-bottom: 5px; }
-  .ptog.on { border-color: currentColor; font-weight: 600; }
+/* Team toggle */
+.ptog{width:100%;padding:7px 10px;border:0.5px solid var(--border);border-radius:8px;background:none;color:var(--muted);cursor:pointer;font-size:13px;text-align:left;margin-bottom:5px;}
+.ptog.on{border-color:currentColor;font-weight:600;}
+.sec-hdr{display:flex;justify-content:space-between;align-items:center;margin:16px 0 12px;}
+.sec-hdr .stitle{margin:0;}
 
-  /* ── Section divider ── */
-  .sec-hdr { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 12px; }
-  .sec-hdr .stitle { margin: 0; }
+/* ── LIVE SCORING ──────────────────────────────────────── */
+#live-wrap{display:flex;flex-direction:column;height:100%;}
+
+/* Running leaderboard strip */
+#live-lb{display:flex;gap:0;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;overflow-x:auto;}
+#live-lb::-webkit-scrollbar{display:none;}
+.lb-cell{flex:1;min-width:72px;padding:8px 6px;text-align:center;}
+.lb-cell-score{font-size:22px;font-weight:800;line-height:1;}
+.lb-cell-thru{font-size:10px;color:var(--muted);}
+
+/* Round selector */
+#rnd-strip{display:flex;gap:8px;padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;overflow-x:auto;}
+#rnd-strip::-webkit-scrollbar{display:none;}
+
+/* Hole nav */
+#hole-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0;}
+#hole-display{text-align:center;flex:1;}
+#hole-display .hole-num{font-size:32px;font-weight:800;line-height:1;}
+#hole-display .hole-par{font-size:13px;color:var(--muted);}
+.nav-arrow{background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--text);flex-shrink:0;}
+.nav-arrow:active{opacity:0.6;}
+
+/* Hole dots */
+#hole-dots{padding:8px 14px;display:flex;gap:4px;flex-wrap:wrap;border-bottom:0.5px solid var(--border);flex-shrink:0;}
+.h-dot{width:28px;height:28px;border-radius:7px;border:0.5px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);}
+.h-dot.done{background:var(--bg2);color:var(--muted);}
+.h-dot.active{border-color:var(--green);color:var(--green);background:rgba(34,168,97,0.12);}
+.h-dot.front{opacity:0.5;}
+
+/* Player score rows */
+#player-rows{flex:1;overflow-y:auto;padding:10px 14px;}
+.p-row{display:flex;align-items:center;gap:12px;background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+.p-row-info{flex:1;min-width:0;}
+.p-row-name{font-weight:700;font-size:16px;}
+.p-row-run{font-size:12px;margin-top:2px;}
+.p-row-ctrl{display:flex;align-items:center;gap:0;}
+.pm-btn{width:46px;height:46px;border-radius:12px;border:none;font-size:24px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pm-btn:active{transform:scale(0.92);}
+.pm-minus{background:var(--bg3);color:var(--text);}
+.pm-plus{background:var(--green);color:#fff;}
+.pm-val{font-size:28px;font-weight:800;min-width:44px;text-align:center;}
+
+/* Scorecard toggle */
+#sc-toggle{display:flex;gap:8px;padding:10px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -139,17 +172,30 @@ let S = {
   sb:{1:{ctp:"",ld:""},2:{ctp:"",ld:""},3:{ctp:"",ld:""},4:{ctp:"",ld:""}},
   matches:[]
 };
-let TAB="board", RND=1, EDIT_PAR=false;
+let TAB="board", RND=1, HOLE=0, SHOW_CARD=false;
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
 let SHOW_MF=false;
 
-function loadS(){try{const d=localStorage.getItem(SKEY);if(d)S=JSON.parse(d);}catch(e){}}
+// ── Storage ─────────────────────────────────────────────
+function loadS(){try{const d=localStorage.getItem(SKEY);if(d)S={...S,...JSON.parse(d)};}catch(e){}}
 function saveS(){try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}}
 
+// ── Helpers ─────────────────────────────────────────────
 const ps=s=>{const n=parseInt(s);return isNaN(n)||n<=0?null:n;};
-const tot=arr=>{const ns=arr.map(ps).filter(n=>n!==null);return ns.length?ns.reduce((a,b)=>a+b,0):null;};
+const tot=(arr,a=0,b=18)=>{const ns=arr.slice(a,b).map(ps).filter(n=>n!==null);return ns.length?ns.reduce((x,y)=>x+y,0):null;};
 const pSum=(arr,a=0,b=18)=>arr.slice(a,b).reduce((x,y)=>x+y,0);
+const scoreClass=(v,par)=>{const n=ps(v);if(!n||!par)return"var(--muted)";const d=n-par;if(d<=-2)return"#C8901A";if(d===-1)return"#4dd68a";if(d===0)return"var(--text)";if(d===1)return"#f07060";return"#c0392b";};
+const diffTag=(v,par)=>{if(!v||!par)return`<span class="muted">—</span>`;const d=v-par;return`<span class="diff-pill ${d<0?"diff-neg":d>0?"diff-pos":"diff-e"}">${d===0?"E":d>0?"+"+d:d}</span>`;};
+const av=(p,sz="md")=>`<img src="${PHOTOS[p]}" class="av av-${sz}" style="border-color:${PC[p]}" />`;
 
+// Running total vs par through holes completed
+function runTot(r,p,upTo){
+  let s=0,par=0,done=0;
+  for(let h=0;h<upTo;h++){const n=ps(S.scores[r][p][h]);if(n){s+=n;par+=S.pars[r][h];done++;}}
+  return done===0?null:{score:s,par,diff:s-par,thru:done};
+}
+
+// ── Calculations ─────────────────────────────────────────
 function calcSkins(r){
   let carry=0;const wins=Object.fromEntries(PLAYERS.map(p=>[p,0]));
   for(let h=0;h<18;h++){
@@ -177,15 +223,11 @@ function getStandings(){
   });
   return PLAYERS.map(p=>({p,...acc[p],total:acc[p].rp+acc[p].sk+acc[p].ctp+acc[p].ld})).sort((a,b)=>b.total-a.total);
 }
-const sColor=s=>({eagle:"#C8901A",birdie:"#22A861",par:"#f0ede8",bogey:"#f07060",double:"#c0392b"}[s]||"var(--muted)");
-function scoreClass(v,par){const n=ps(v);if(!n||!par)return"var(--muted)";const d=n-par;if(d<=-2)return"#C8901A";if(d===-1)return"#22A861";if(d===0)return"#f0ede8";if(d===1)return"#f07060";return"#c0392b";}
-const diffTag=(v,par)=>{if(!v||!par)return`<span class="muted">—</span>`;const d=v-par,cls=d<0?"diff-neg":d>0?"diff-pos":"diff-e";return`<span class="diff-pill ${cls}">${d===0?"E":d>0?"+"+d:d}</span>`;};
-const av=(p,sz="md")=>`<img src="${PHOTOS[p]}" class="av av-${sz}" style="border-color:${PC[p]}" />`;
 
-// ── BOARD ──────────────────────────────────────────────────────
+// ── BOARD ─────────────────────────────────────────────────
 function buildBoard(){
   const st=getStandings();
-  return`<div class="stitle">Overall points</div>
+  return`<div class="pg"><div class="stitle">Overall points</div>
   ${st.map((s,i)=>`<div class="row-card">
     <span style="font-size:22px;width:24px;text-align:center">${MEDALS[i]}</span>
     ${av(s.p,"lg")}
@@ -201,7 +243,7 @@ function buildBoard(){
     const tots=PLAYERS.map(p=>({p,t:tot(S.scores[r][p])})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
     const parT=pSum(S.pars[r]);
     return`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
         <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
       </div>
       <div class="muted" style="margin-bottom:10px">${TEETIME[r]}</div>
@@ -215,46 +257,133 @@ function buildBoard(){
           <span style="color:var(--green);font-size:11px;min-width:20px;text-align:right">${rp[x.p]?"+"+rp[x.p]:"—"}</span>
         </div>`).join("")}
     </div>`;
-  }).join("")}`;
+  }).join("")}</div>`;
 }
 
-// ── SCORES ─────────────────────────────────────────────────────
-function buildScores(){
-  const pars=S.pars[RND]; const sc=S.scores[RND];
-  function cell(h){
-    return PLAYERS.map(p=>{const v=sc[p][h];return`<td><input class="score-inp" id="s-${RND}-${p}-${h}" type="number" inputmode="numeric" value="${v}" style="color:${scoreClass(v,pars[h])}" onblur="upScore(${RND},'${p}',${h},this.value)" onfocus="this.select()" /></td>`;}).join("");
-  }
+// ── LIVE SCORING ──────────────────────────────────────────
+function buildLiveLeaderboard(){
+  // Show each player's running total vs par through holes played
+  const thruH = PLAYERS.map(p => {
+    for(let h=17;h>=0;h--){if(ps(S.scores[RND][p][h]))return h+1;}return 0;
+  });
+  const maxThru = Math.max(...thruH);
+
+  return PLAYERS.map(p=>{
+    const rt = runTot(RND,p,18);
+    const d = rt ? rt.diff : null;
+    const thru = thruH[PLAYERS.indexOf(p)];
+    const dStr = d===null?"—":d===0?"E":d>0?"+"+d:""+d;
+    const dCol = d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)";
+    return `<div class="lb-cell">
+      <img src="${PHOTOS[p]}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]}" />
+      <div class="lb-cell-score" style="color:${dCol}">${dStr}</div>
+      <div class="lb-cell-thru">${thru===18?"F":thru===0?"—":"thru "+thru}</div>
+    </div>`;
+  }).join("");
+}
+
+function buildHoleDots(){
+  return PLAYERS.length && Array.from({length:18},(_,h)=>{
+    const allDone = PLAYERS.every(p=>ps(S.scores[RND][p][h]));
+    const anyDone = PLAYERS.some(p=>ps(S.scores[RND][p][h]));
+    let cls = h===HOLE?"active":allDone?"done":"";
+    return `<div class="h-dot ${cls}" onclick="setHole(${h})">${h+1}</div>`;
+  }).join("");
+}
+
+function buildPlayerRows(){
+  const par = S.pars[RND][HOLE];
+  return PLAYERS.map(p=>{
+    const v = ps(S.scores[RND][p][HOLE]);
+    const rt = runTot(RND,p,HOLE+1);
+    const d = rt ? rt.diff : null;
+    const dStr = d===null?"":d===0?" · E":d>0?` · +${d}`:` · ${d}`;
+    const dCol = d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)";
+    const vCol = scoreClass(v||null,par);
+    return `<div class="p-row" id="pr-${p}">
+      <img src="${PHOTOS[p]}" class="av av-lg" style="border-color:${PC[p]}" />
+      <div class="p-row-info">
+        <div class="p-row-name" style="color:${PC[p]}">${p}</div>
+        <div class="p-row-run">
+          ${rt?`<span style="color:${dCol};font-weight:600">${dStr.trim()||"E"}</span> thru ${rt.thru}`:`<span style="color:var(--muted)">—</span>`}
+        </div>
+      </div>
+      <div class="p-row-ctrl">
+        <button class="pm-btn pm-minus" onclick="adjScore('${p}',-1)">−</button>
+        <div class="pm-val" style="color:${v?vCol:"var(--muted)"}">${v||"—"}</div>
+        <button class="pm-btn pm-plus" onclick="adjScore('${p}',1)">+</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function buildScoreCard(){
+  const pars=S.pars[RND];const sc=S.scores[RND];
+  function cell(h){return PLAYERS.map(p=>{const v=sc[p][h];return`<td style="color:${scoreClass(v,pars[h])};font-weight:600">${v||"·"}</td>`;}).join("");}
   function totRow(label,start,end){
     const parV=pSum(pars,start,end);
-    const cells=PLAYERS.map(p=>{const v=tot(sc[p].slice(start,end));const d=v?v-parV:null;return`<td id="t-${RND}-${p}-${label}" style="font-weight:700;color:${d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)"}">${v||"—"}</td>`;}).join("");
+    const cells=PLAYERS.map(p=>{const v=tot(sc[p].slice(start,end));const d=v?v-parV:null;return`<td style="font-weight:700;color:${d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)"}">${v||"—"}</td>`;}).join("");
     return`<tr class="${label==="TOT"?"grand-row":"tot-row"}"><td>${label}/${parV}</td>${cells}</tr>`;
   }
-  return`<div style="display:flex;gap:7px;margin-bottom:13px;flex-wrap:wrap">
-    ${ROUNDS.map(r=>`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r})">R${r} — ${COURSES[r]}</button>`).join("")}
-  </div>
-  <div style="overflow-x:auto;border-radius:10px;border:0.5px solid var(--border);margin-bottom:10px">
+  return`<div style="padding:0 14px 14px;overflow-x:auto">
     <table class="score-table">
-      <thead><tr><th>Hole</th>${PLAYERS.map(p=>`<th><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${PHOTOS[p]}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}" /><span style="color:${PC[p]};font-size:10px">${p}</span></div></th>`).join("")}</tr></thead>
+      <thead><tr><th>H</th>${PLAYERS.map(p=>`<th style="color:${PC[p]}">${p[0]}</th>`).join("")}</tr></thead>
       <tbody>
-        ${Array.from({length:9},(_,h)=>`<tr><td>${h+1}${pars[h]!==4?`<sup style="font-size:9px">${pars[h]}</sup>`:""}</td>${cell(h)}</tr>`).join("")}
+        ${Array.from({length:9},(_,h)=>`<tr style="background:${h===HOLE?"rgba(34,168,97,0.08)":""}"><td style="${h===HOLE?"color:var(--green);font-weight:700":""}">${h+1}</td>${cell(h)}</tr>`).join("")}
         ${totRow("OUT",0,9)}
-        ${Array.from({length:9},(_,h)=>`<tr><td>${h+10}${pars[h+9]!==4?`<sup style="font-size:9px">${pars[h+9]}</sup>`:""}</td>${cell(h+9)}</tr>`).join("")}
+        ${Array.from({length:9},(_,h)=>`<tr style="background:${h+9===HOLE?"rgba(34,168,97,0.08)":""}"><td style="${h+9===HOLE?"color:var(--green);font-weight:700":""}">${h+10}</td>${cell(h+9)}</tr>`).join("")}
         ${totRow("IN",9,18)}
         ${totRow("TOT",0,18)}
       </tbody>
     </table>
-  </div>
-  <button class="pill-btn${EDIT_PAR?" active":""}" onclick="toggleEditPar()">✏️ Edit par</button>`;
+  </div>`;
 }
 
-// ── SKINS ──────────────────────────────────────────────────────
+function buildScores(){
+  const par = S.pars[RND][HOLE];
+  const holeLabel = `Hole ${HOLE+1}`;
+  const dist = ["357","392","163","414","546","394","192","387","418","455","406","184","425","374","497","385","208","432"][HOLE]||"";
+
+  return `<div id="live-wrap">
+    <!-- Running leaderboard strip -->
+    <div id="live-lb">${buildLiveLeaderboard()}</div>
+
+    <!-- Round selector -->
+    <div id="rnd-strip">
+      ${ROUNDS.map(r=>`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r})" style="font-size:12px">R${r} · ${COURSES[r]}</button>`).join("")}
+    </div>
+
+    <!-- Hole navigation -->
+    <div id="hole-nav">
+      <button class="nav-arrow" onclick="setHole(Math.max(0,HOLE-1))">‹</button>
+      <div id="hole-display">
+        <div class="hole-num">${holeLabel}</div>
+        <div class="hole-par">Par ${par}${dist?` · ${dist}y`:""}</div>
+      </div>
+      <button class="nav-arrow" onclick="setHole(Math.min(17,HOLE+1))">›</button>
+    </div>
+
+    <!-- Hole dots progress -->
+    <div id="hole-dots">${buildHoleDots()}</div>
+
+    <!-- View toggle -->
+    <div id="sc-toggle">
+      <button class="pill-btn${!SHOW_CARD?" active":""}" onclick="setShowCard(false)">Live entry</button>
+      <button class="pill-btn${SHOW_CARD?" active":""}" onclick="setShowCard(true)">Full scorecard</button>
+    </div>
+
+    ${SHOW_CARD ? buildScoreCard() : `<div id="player-rows">${buildPlayerRows()}</div>`}
+  </div>`;
+}
+
+// ── SKINS ─────────────────────────────────────────────────
 function buildSkins(){
   const allSk=Object.fromEntries(PLAYERS.map(p=>[p,ROUNDS.reduce((s,r)=>s+calcSkins(r).wins[p],0)]));
   const maxSk=Math.max(...Object.values(allSk));
   const summary=`<div class="stitle">Trip skin totals</div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
     ${PLAYERS.map(p=>`<div style="background:var(--card);border:0.5px solid ${allSk[p]===maxSk&&maxSk>0?PC[p]:"var(--border)"};border-radius:10px;padding:10px 4px;text-align:center">
-      <img src="${PHOTOS[p]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};margin-bottom:4px" />
+      <img src="${PHOTOS[p]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};margin-bottom:4px"/>
       <div style="font-size:26px;font-weight:800;color:${allSk[p]===maxSk&&maxSk>0?PC[p]:"var(--text)"}">${allSk[p]}</div>
       <div class="muted">skins</div>
     </div>`).join("")}
@@ -276,7 +405,7 @@ function buildSkins(){
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         ${PLAYERS.map(p=>`<div style="flex:1;text-align:center;opacity:${wins[p]>0?1:0.3}">
-          <img src="${PHOTOS[p]}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}" /><br/>
+          <img src="${PHOTOS[p]}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/><br/>
           <div style="font-size:22px;font-weight:800;color:${wins[p]>0?PC[p]:"var(--muted)"}">${wins[p]}</div>
         </div>`).join("")}
       </div>
@@ -287,19 +416,19 @@ function buildSkins(){
           ${w&&sk>1?`<div style="font-size:9px;color:var(--gold)">×${sk}</div>`:""}
         </div>`).join("")}
       </div>
-      ${carry>0?`<div style="margin-top:8px;font-size:12px;color:#f07060">⚠️ ${carry} skin${carry>1?"s":""} unclaimed (final tied)</div>`:""}
+      ${carry>0?`<div style="margin-top:8px;font-size:12px;color:#f07060">⚠️ ${carry} skin${carry>1?"s":""} unclaimed</div>`:""}
     </div>`;
   }).join("");
-  return summary+`<div class="stitle">By round</div>`+rounds;
+  return`<div class="pg">${summary}<div class="stitle">By round</div>${rounds}</div>`;
 }
 
-// ── BETS ───────────────────────────────────────────────────────
+// ── BETS ──────────────────────────────────────────────────
 function buildBets(){
   const sbSec=`<div class="stitle">Closest to pin &amp; long drive</div>
   ${ROUNDS.map(r=>{
     const sb=S.sb[r]||{};
     return`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
         <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
       </div>
       <div class="muted" style="margin-bottom:10px">${TEETIME[r]}</div>
@@ -321,7 +450,6 @@ function buildBets(){
       </div>
     </div>`;
   }).join("")}`;
-
   const mForm=SHOW_MF?`<div class="card" style="border-color:rgba(34,168,97,0.35);margin-bottom:12px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div><span class="lbl">Round</span>
@@ -347,10 +475,9 @@ function buildBets(){
         ${MF.t2.length>1?`<option value="${MF.t2.join(" & ")}"${MF.winner===MF.t2.join(" & ")?" selected":""}>Team 2: ${MF.t2.join(" & ")}</option>`:""}
       </select>
     </div>
-    <div style="margin-bottom:12px"><span class="lbl">Stake / notes</span><input class="inp" value="${MF.notes}" placeholder="$20 Nassau, beers, bragging rights…" onblur="mfSet('notes',this.value)" /></div>
+    <div style="margin-bottom:12px"><span class="lbl">Stake / notes</span><input class="inp" value="${MF.notes}" placeholder="$20 Nassau, beers, bragging rights…" onblur="mfSet('notes',this.value)"/></div>
     <div style="display:flex;gap:8px"><button class="action-btn" style="flex:1" onclick="addMatch()">Save match</button><button class="pill-btn" onclick="toggleMF()">Cancel</button></div>
   </div>`:"";
-
   const matchList=S.matches.length===0&&!SHOW_MF
     ?`<div class="muted" style="text-align:center;padding:20px 0">No matches logged yet</div>`
     :[...S.matches].reverse().map(m=>`<div class="card">
@@ -363,11 +490,10 @@ function buildBets(){
         <button class="del-btn" onclick="delMatch(${m.id})">×</button>
       </div>
     </div>`).join("");
-
-  return sbSec+`<div class="sec-hdr"><div class="stitle">Matches &amp; bets</div><button class="action-btn" onclick="toggleMF()">+ Log</button></div>`+mForm+matchList;
+  return`<div class="pg">${sbSec}<div class="sec-hdr"><div class="stitle">Matches &amp; bets</div><button class="action-btn" onclick="toggleMF()">+ Log</button></div>${mForm}${matchList}</div>`;
 }
 
-// ── GLORY ──────────────────────────────────────────────────────
+// ── GLORY ─────────────────────────────────────────────────
 function buildGlory(){
   const st=getStandings();
   const stats=Object.fromEntries(PLAYERS.map(p=>[p,{b:0,e:0,bo:0,db:0,rs:[]}]));
@@ -396,35 +522,66 @@ function buildGlory(){
     {icon:"🤡",title:"Good Walk Spoiled",player:wA.length?wA[0].p:null,desc:`Highest avg: ${wA[0]?.v?.toFixed(1)||"—"} — someone owes drinks`},
     {icon:"🍺",title:"Beer Fund",player:st.length&&st[0].total>0?st[st.length-1].p:null,desc:"Last place — open the wallet"},
   ];
-  return`<div class="stitle">Trip awards</div>
+  return`<div class="pg"><div class="stitle">Trip awards</div>
   <div class="muted" style="margin-bottom:14px">Live — updates as scores are entered</div>
   ${awards.map(a=>`<div class="award-card" style="border-left:3px solid ${a.player?PC[a.player]:"var(--border)"}">
-    ${a.player?`<img src="${PHOTOS[a.player]}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${PC[a.player]};flex-shrink:0" />`:`<span style="font-size:28px;line-height:1;flex-shrink:0">${a.icon}</span>`}
+    ${a.player?`<img src="${PHOTOS[a.player]}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${PC[a.player]};flex-shrink:0"/>`:`<span style="font-size:28px;line-height:1;flex-shrink:0">${a.icon}</span>`}
     <div style="flex:1">
       <div style="font-weight:700;font-size:15px;color:${a.player?PC[a.player]:"var(--muted)"}">${a.player?`${a.icon} ${a.player}`:"TBD"}</div>
       <div style="font-weight:600;font-size:13px;color:var(--text);margin:2px 0 3px">${a.title}</div>
       <div class="muted">${a.desc}</div>
     </div>
-  </div>`).join("")}`;
+  </div>`).join("")}</div>`;
 }
 
-// ── RENDER ─────────────────────────────────────────────────────
+// ── RENDER ────────────────────────────────────────────────
 function render(){
-  document.getElementById("header-dots").innerHTML=PLAYERS.map(p=>`<img src="${PHOTOS[p]}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]}" />`).join("");
+  document.getElementById("header-dots").innerHTML=PLAYERS.map(p=>`<img src="${PHOTOS[p]}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]}"/>`).join("");
   const tabs=[["board","⛳","Board"],["scores","📋","Scores"],["skins","💰","Skins"],["bets","🎰","Bets"],["glory","🥇","Glory"]];
   document.getElementById("tab-bar").innerHTML=tabs.map(([id,ic,lb])=>`<button class="tab-btn${TAB===id?" active":""}" onclick="setTab('${id}')">${ic}<span>${lb}</span></button>`).join("");
-  document.getElementById("content").innerHTML=
-    TAB==="board"?buildBoard():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
-  document.getElementById("content").scrollTop=0;
+  const el = document.getElementById("content");
+  el.innerHTML=TAB==="board"?buildBoard():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
+  if(TAB!=="scores") el.scrollTop=0;
+
+  // Swipe between rounds on scores tab
+  if(TAB==="scores") setupSwipe();
 }
 
-// ── HANDLERS ───────────────────────────────────────────────────
+// ── SWIPE ─────────────────────────────────────────────────
+let swipeX=null;
+function setupSwipe(){
+  const el=document.getElementById("content");
+  el.addEventListener("touchstart",e=>{swipeX=e.touches[0].clientX;},{passive:true});
+  el.addEventListener("touchend",e=>{
+    if(swipeX===null)return;
+    const dx=e.changedTouches[0].clientX-swipeX;
+    if(Math.abs(dx)>60){
+      if(dx<0&&RND<4){RND++;render();}
+      else if(dx>0&&RND>1){RND--;render();}
+    }
+    swipeX=null;
+  },{passive:true});
+}
+
+// ── HANDLERS ─────────────────────────────────────────────
 function setTab(t){TAB=t;SHOW_MF=false;render();}
 function setRnd(r){RND=r;render();}
-function toggleEditPar(){EDIT_PAR=!EDIT_PAR;render();}
-function upScore(r,p,h,v){S.scores[r][p][h]=v;saveS();const el=document.getElementById(`s-${r}-${p}-${h}`);if(el)el.style.color=scoreClass(v,S.pars[r][h]);refreshTots(r);}
-function refreshTots(r){["OUT","IN","TOT"].forEach(lbl=>{PLAYERS.forEach(p=>{const el=document.getElementById(`t-${r}-${p}-${lbl}`);if(!el)return;const start=lbl==="IN"?9:0,end=lbl==="OUT"?9:18;const v=tot(S.scores[r][p].slice(start,end));const par=pSum(S.pars[r],start,end);const d=v?v-par:null;el.textContent=v||"—";el.style.color=d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)";});});}
-function updatePar(r,h,v){S.pars[r][h]=parseInt(v)||4;saveS();refreshTots(r);}
+function setHole(h){HOLE=h;render();}
+function setShowCard(v){SHOW_CARD=v;render();}
+
+function adjScore(p,delta){
+  const cur=ps(S.scores[RND][p][HOLE])||0;
+  const par=S.pars[RND][HOLE];
+  let nv=cur+delta;
+  if(nv<1)nv=1;
+  if(nv>12)nv=12;
+  S.scores[RND][p][HOLE]=String(nv);
+  saveS();
+  // haptic
+  if(navigator.vibrate) navigator.vibrate(8);
+  render();
+}
+
 function setSB(r,k,v){S.sb[r]=S.sb[r]||{};S.sb[r][k]=v;saveS();render();}
 function toggleMF(){SHOW_MF=!SHOW_MF;render();}
 function mfSet(k,v){MF[k]=v;render();}
@@ -433,9 +590,7 @@ function addMatch(){if(!MF.winner)return;S.matches.push({...MF,id:Date.now()});s
 function delMatch(id){S.matches=S.matches.filter(m=>m.id!==id);saveS();render();}
 
 loadS();render();
-
-// Register service worker for offline support
-if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
 </html>
