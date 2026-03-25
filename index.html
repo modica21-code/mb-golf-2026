@@ -292,7 +292,22 @@ function getStandings(){
 // ── BOARD ─────────────────────────────────────────────────
 function buildBoard(){
   const st=getStandings();
-  return`<div class="pg"><div class="stitle">Overall points</div>
+  // Net standings
+  const ns=netStandings();
+  const anyNet=ns.some(x=>x.played>0);
+
+  return`<div class="pg">
+  <!-- Weather -->
+  <div class="card" id="wx-card" style="margin-bottom:12px">
+    ${buildWeatherCard()}
+  </div>
+
+  <!-- Share button -->
+  <button onclick="shareScores()" style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:10px;padding:11px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <span style="font-size:18px">🔗</span> Share live scores with the group
+  </button>
+
+  <div class="stitle">Overall points (gross)</div>
   ${st.map((s,i)=>`<div class="row-card">
     <span style="font-size:22px;width:24px;text-align:center">${MEDALS[i]}</span>
     ${av(s.p,"lg")}
@@ -323,6 +338,28 @@ function buildBoard(){
         </div>`).join("")}
     </div>`;
   }).join("")}
+  ${anyNet?`
+  <div class="stitle" style="margin-top:16px">Net leaderboard</div>
+  ${ns.filter(x=>x.played>0).map((s,i)=>{
+    const p=s.p;
+    const hi=HI[p];
+    const ch=hi!=null?Math.round(hi*(CDATA[RND].tees[S.teeSet?.[RND]||"Blue"]?.s||113)/113):null;
+    return`<div class="row-card">
+      <span style="font-size:22px;width:24px;text-align:center">${MEDALS[i]||"·"}</span>
+      ${av(p,"lg")}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;color:${PC[p]};font-size:15px">${p}</div>
+        <div class="muted" style="margin-top:2px">
+          ${s.nets.map((n,ri)=>`R${ri+1}: ${n}`).join(" · ")}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:24px;font-weight:800;color:${PC[p]}">${s.total}</div>
+        <div class="muted" style="font-size:11px">net ${s.played}R</div>
+      </div>
+    </div>`;
+  }).join("")}`:""}
+
   <div class="stitle" style="margin-top:16px">Course guide</div>
   ${ROUNDS.map(r=>{
     const cd=CDATA[r];
@@ -413,19 +450,36 @@ function buildPlayerRows(){
     const vCol = scoreClass(v||null,par);
     const strokes = strokesOnHole(p,RND,HOLE);
     const nameExtra = strokes ? ` <span style="font-size:10px;background:#C8901A22;color:#C8901A;border-radius:4px;padding:1px 4px">●</span>` : "";
-    return `<div class="p-row" id="pr-${p}">
-      <img src="${PHOTOS[p]}" class="av av-lg" style="border-color:${PC[p]}" />
-      <div class="p-row-info">
-        <div class="p-row-name" style="color:${PC[p]}">${p}${nameExtra}</div>
-        <div class="p-row-run">
-          ${rt?`<span style="color:${dCol};font-weight:600">${dStr.trim()||"E"}</span> thru ${rt.thru}`:`<span style="color:var(--muted)">—</span>`}
+    // Quick pick labels relative to par
+    const qpicks=[
+      {d:-2,label:"Eagle",sc:"#C8901A"},
+      {d:-1,label:"Birdie",sc:"#4dd68a"},
+      {d:0,label:"Par",sc:"var(--muted)"},
+      {d:1,label:"Bogey",sc:"#f07060"},
+      {d:2,label:"Dbl",sc:"#c0392b"},
+    ];
+    const qRow=qpicks.map(q=>{
+      const qv=par+q.d;if(qv<1)return"";
+      const active=v===qv;
+      return`<button onclick="quickPick('${p}',${qv})" style="flex:1;padding:5px 2px;border-radius:8px;border:0.5px solid ${active?q.sc:"var(--border)"};background:${active?q.sc+"22":"none"};color:${active?q.sc:"var(--muted)"};font-size:10px;cursor:pointer;font-weight:${active?700:400}">${q.d===0?"Par":q.d===-2?"Eagle":q.d===-1?"Birdie":q.label}</button>`;
+    }).join("");
+
+    return `<div class="p-row" id="pr-${p}" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="${PHOTOS[p]}" class="av av-lg" style="border-color:${PC[p]}" />
+        <div class="p-row-info">
+          <div class="p-row-name" style="color:${PC[p]}">${p}${nameExtra}</div>
+          <div class="p-row-run">
+            ${rt?`<span style="color:${dCol};font-weight:600">${dStr.trim()||"E"}</span> thru ${rt.thru}`:`<span style="color:var(--muted)">—</span>`}
+          </div>
+        </div>
+        <div class="p-row-ctrl" style="margin-left:auto">
+          <button class="pm-btn pm-minus" onclick="adjScore('${p}',-1)">−</button>
+          <div class="pm-val" style="color:${v?vCol:"var(--muted)"}">${v||"—"}</div>
+          <button class="pm-btn pm-plus" onclick="adjScore('${p}',1)">+</button>
         </div>
       </div>
-      <div class="p-row-ctrl">
-        <button class="pm-btn pm-minus" onclick="adjScore('${p}',-1)">−</button>
-        <div class="pm-val" style="color:${v?vCol:"var(--muted)"}">${v||"—"}</div>
-        <button class="pm-btn pm-plus" onclick="adjScore('${p}',1)">+</button>
-      </div>
+      <div style="display:flex;gap:4px">${qRow}</div>
     </div>`;
   }).join("");
 }
@@ -728,11 +782,18 @@ function adjScore(p,delta){
   if(nv>12)nv=12;
   S.scores[RND][p][HOLE]=String(nv);
   saveS();
-  // haptic
   if(navigator.vibrate) navigator.vibrate(8);
   render();
+  checkAutoAdvance();
 }
 
+function quickPick(p,v){
+  S.scores[RND][p][HOLE]=String(v);
+  saveS();
+  if(navigator.vibrate)navigator.vibrate(8);
+  render();
+  checkAutoAdvance();
+}
 function setSB(r,k,v){S.sb[r]=S.sb[r]||{};S.sb[r][k]=v;saveS();render();}
 function toggleMF(){SHOW_MF=!SHOW_MF;render();}
 function mfSet(k,v){MF[k]=v;render();}
@@ -740,7 +801,93 @@ function mfTogT(team,p){MF[team]=MF[team].includes(p)?MF[team].filter(x=>x!==p):
 function addMatch(){if(!MF.winner)return;S.matches.push({...MF,id:Date.now()});saveS();SHOW_MF=false;MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};render();}
 function delMatch(id){S.matches=S.matches.filter(m=>m.id!==id);saveS();render();}
 
-loadHI();loadS();render();
+// ── SHARE ─────────────────────────────────────────────────
+function shareScores(){
+  try{
+    const payload=JSON.stringify({scores:S.scores,sb:S.sb,matches:S.matches,teeSet:S.teeSet});
+    const b64=btoa(encodeURIComponent(payload));
+    const url=location.origin+location.pathname+"?d="+b64;
+    if(navigator.share){navigator.share({title:"MB Golf 2026",text:"Live scores",url});}
+    else if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>alert("Link copied! Send to the group."));}
+    else{prompt("Copy this link:",url);}
+  }catch(e){alert("Could not generate share link");}
+}
+function checkImport(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const d=p.get("d");
+    if(!d)return;
+    const payload=JSON.parse(decodeURIComponent(atob(d)));
+    if(payload.scores){
+      S.scores=payload.scores;
+      if(payload.sb)S.sb=payload.sb;
+      if(payload.matches)S.matches=payload.matches;
+      if(payload.teeSet)S.teeSet=payload.teeSet;
+      saveS();
+    }
+    history.replaceState(null,"",location.pathname);
+  }catch(e){}
+}
+
+// ── NET SCORES ────────────────────────────────────────────
+function netScore(p,r){
+  const gross=tot(S.scores[r][p]);if(!gross)return null;
+  const tee=S.teeSet?.[r]||"Blue";
+  const slope=CDATA[r].tees[tee]?.s||113;
+  const hi=HI[p];if(hi===null||hi===undefined)return gross;
+  const ch=Math.round(hi*slope/113);
+  return gross-ch;
+}
+function netStandings(){
+  return PLAYERS.map(p=>{
+    const nets=ROUNDS.map(r=>netScore(p,r)).filter(n=>n!==null);
+    return{p,nets,total:nets.reduce((a,b)=>a+b,0),played:nets.length};
+  }).sort((a,b)=>a.total-b.total);
+}
+
+// ── WEATHER ───────────────────────────────────────────────
+let WEATHER=null;
+async function fetchWeather(){
+  try{
+    // Murrells Inlet, SC (near TPC) lat/lon
+    const res=await fetch("https://api.open-meteo.com/v1/forecast?latitude=33.58&longitude=-79.06&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=3");
+    const d=await res.json();
+    WEATHER=d.daily;
+    const wEl=document.getElementById("wx-card");
+    if(wEl)wEl.innerHTML=buildWeatherCard();
+  }catch(e){}
+}
+const WX_ICON={0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",53:"🌦️",55:"🌧️",61:"🌧️",63:"🌧️",65:"🌧️",71:"🌨️",73:"🌨️",75:"🌨️",80:"🌦️",81:"🌧️",82:"⛈️",95:"⛈️",96:"⛈️",99:"⛈️"};
+const WX_DAY=["Thu 3/26","Fri 3/27","Sat 3/28"];
+function buildWeatherCard(){
+  if(!WEATHER)return`<div class="muted" style="padding:12px">Loading weather…</div>`;
+  const {temperature_2m_max:hi,temperature_2m_min:lo,precipitation_probability_max:rain,weathercode:code,time}=WEATHER;
+  return`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    ${[0,1,2].map(i=>{
+      const icon=WX_ICON[code[i]]||"🌡️";
+      const rainPct=rain[i];
+      const rainCol=rainPct>50?"#f07060":rainPct>30?"#C8901A":"var(--green)";
+      return`<div style="text-align:center;background:var(--bg3);border-radius:9px;padding:10px 6px">
+        <div class="muted" style="font-size:11px;margin-bottom:4px">${WX_DAY[i]}</div>
+        <div style="font-size:24px">${icon}</div>
+        <div style="font-size:14px;font-weight:700;margin:3px 0">${Math.round(hi[i])}°</div>
+        <div class="muted" style="font-size:11px">${Math.round(lo[i])}° low</div>
+        <div style="font-size:11px;color:${rainCol};margin-top:3px">💧${rainPct}%</div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+// ── AUTO-ADVANCE ──────────────────────────────────────────
+function checkAutoAdvance(){
+  if(SHOW_CARD)return;
+  const allDone=PLAYERS.every(p=>ps(S.scores[RND][p][HOLE])!==null);
+  if(allDone&&HOLE<17){
+    setTimeout(()=>{HOLE++;render();if(navigator.vibrate)navigator.vibrate([20,50,20]);},600);
+  }
+}
+
+loadHI();loadS();checkImport();render();fetchWeather();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
