@@ -145,7 +145,10 @@ input[type=number]{-moz-appearance:textfield;}
     <div style="width:38px;height:38px;background:var(--green);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">⛳</div>
     <div>
       <div style="font-weight:700;font-size:17px">MB Golf 2026</div>
-      <div class="muted">Mar 26–28 · 4 rounds</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="muted" style="font-size:11px">Mar 26–28</span>
+        <span id="sync-badge" style="font-size:11px;color:var(--muted)">○ Connecting…</span>
+      </div>
     </div>
     <div id="header-dots"></div>
   </div>
@@ -233,17 +236,114 @@ let TAB="board", RND=1, HOLE=0, SHOW_CARD=false;
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
 let SHOW_MF=false;
 
-// ── Storage ─────────────────────────────────────────────
+// ── Firebase Realtime Database ───────────────────────────
+const FB_URL = "https://mb-golf-2026-default-rtdb.firebaseio.com";
+const FB_API = "AIzaSyC543ukb2a1goHqUWwHmE99AeD4LJOmUGM";
+const FB_PATH = FB_URL + "/trip.json?auth=" + FB_API;
+
+let FB_LISTENER = null;
+let FB_LAST_SAVE = 0;
+let FB_SAVING = false;
+let SYNCED = false;
+
+function fbGet(){
+  return fetch(FB_URL+"/trip.json").then(r=>r.json());
+}
+function fbSet(data){
+  return fetch(FB_URL+"/trip.json?x-http-method-override=PUT",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(data)
+  });
+}
+
 function loadS(){
   try{
     const d=localStorage.getItem(SKEY);
     if(d){const p=JSON.parse(d);S={...S,...p};}
   }catch(e){}
-  // Always sync pars from CDATA so we get the updated real data
   ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
   if(!S.teeSet) S.teeSet={1:"Blue",2:"Blue",3:"Blue",4:"Blue"};
 }
-function saveS(){try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}}
+
+function saveS(){
+  // Save locally always
+  try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}
+  // Debounced Firebase push
+  FB_LAST_SAVE = Date.now();
+  if(FB_SAVING) return;
+  FB_SAVING = true;
+  setTimeout(async ()=>{
+    try{
+      await fetch(FB_URL+"/trip.json",{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({scores:S.scores,sb:S.sb,matches:S.matches,teeSet:S.teeSet,ts:Date.now()})
+      });
+    }catch(e){}
+    FB_SAVING=false;
+  },400);
+}
+
+// ── Real-time listener (Server-Sent Events) ───────────────
+let FB_LAST_TS = 0;
+function startFirebaseSync(){
+  try{
+    const es = new EventSource(FB_URL+"/trip.json?accept=text/event-stream");
+    es.addEventListener("put", e=>{
+      try{
+        const d=JSON.parse(e.data);
+        const remote = d.data;
+        if(!remote||!remote.scores) return;
+        if(remote.ts && remote.ts <= FB_LAST_TS) return;
+        if(remote.ts) FB_LAST_TS=remote.ts;
+        // Don't overwrite if we just saved within 1s
+        if(Date.now()-FB_LAST_SAVE < 1000) return;
+        S.scores=remote.scores;
+        if(remote.sb) S.sb=remote.sb;
+        if(remote.matches) S.matches=remote.matches;
+        if(remote.teeSet) S.teeSet=remote.teeSet;
+        ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
+        try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e2){}
+        if(!SYNCED){SYNCED=true;updateSyncBadge("live");}
+        render();
+      }catch(err){}
+    });
+    es.onerror=()=>{updateSyncBadge("offline");};
+    es.onopen=()=>{updateSyncBadge("live");};
+  }catch(e){updateSyncBadge("offline");}
+}
+
+function updateSyncBadge(status){
+  const el=document.getElementById("sync-badge");
+  if(!el)return;
+  if(status==="live"){
+    el.textContent="● Live";el.style.color="var(--green)";
+  } else {
+    el.textContent="○ Offline";el.style.color="var(--muted)";
+  }
+}
+
+// Load initial state from Firebase then start live listener
+async function initFirebase(){
+  try{
+    const remote = await fbGet();
+    if(remote&&remote.scores){
+      S.scores=remote.scores;
+      if(remote.sb) S.sb=remote.sb;
+      if(remote.matches) S.matches=remote.matches;
+      if(remote.teeSet) S.teeSet=remote.teeSet;
+      if(remote.ts) FB_LAST_TS=remote.ts;
+      ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
+      try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}
+    }
+    render();
+    updateSyncBadge("live");
+  }catch(e){
+    updateSyncBadge("offline");
+  }
+  startFirebaseSync();
+}
 
 // ── Helpers ─────────────────────────────────────────────
 const ps=s=>{const n=parseInt(s);return isNaN(n)||n<=0?null:n;};
@@ -887,7 +987,7 @@ function checkAutoAdvance(){
   }
 }
 
-loadHI();loadS();checkImport();render();fetchWeather();
+loadHI();loadS();checkImport();render();fetchWeather();initFirebase();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
