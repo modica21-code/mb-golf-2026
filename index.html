@@ -258,8 +258,9 @@ function updateHI(p,v){const n=parseFloat(v);HI[p]=isNaN(n)?null:Math.round(n*10
 // Course handicap = HI × (Slope / 113), rounded
 function courseHdcp(player, round){
   const hi = HI[player]; if(hi===null||hi===undefined) return null;
-  const slope = CDATA[round]?.tees?.Blue?.s || 113;
-  return Math.round(hi * slope / 113);
+  const tee = S.teeSet?.[round] || "Blue";
+  const teeData = CDATA[round]?.tees?.[tee] || Object.values(CDATA[round]?.tees||{})[1] || {s:113};
+  return Math.round(hi * teeData.s / 113);
 }
 
 // Strokes received on a given hole (based on course hdcp vs hdcp index)
@@ -275,7 +276,7 @@ let S = {
   courses:{...COURSES},
   sb:{1:{ctp:"",ld:""},2:{ctp:"",ld:""},3:{ctp:"",ld:""},4:{ctp:"",ld:""}},
   matches:[],
-  teeSet:{1:"Blue",2:"Blue",3:"Blue",4:"Blue"}
+  teeSet:{1:"Blue",2:"Black",3:"Blue",4:"Blue"}
 };
 let TAB="board", RND=1, HOLE=0, SHOW_CARD=false;
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
@@ -308,7 +309,7 @@ function loadS(){
     if(d){const p=JSON.parse(d);S={...S,...p};}
   }catch(e){}
   ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
-  if(!S.teeSet) S.teeSet={1:"Blue",2:"Blue",3:"Blue",4:"Blue"};
+  if(!S.teeSet) S.teeSet={1:"Blue",2:"Black",3:"Blue",4:"Blue"};
 }
 
 function saveS(){
