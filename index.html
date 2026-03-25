@@ -276,7 +276,13 @@ let S = {
   courses:{...COURSES},
   sb:{1:{ctp:"",ld:""},2:{ctp:"",ld:""},3:{ctp:"",ld:""},4:{ctp:"",ld:""}},
   matches:[],
-  teeSet:{1:"Blue",2:"Black",3:"Blue",4:"Blue"}
+  teeSet:{1:"Blue",2:"Black",3:"Blue",4:"Blue"},
+  junk:{
+    1:Object.fromEntries(["Modes","Jake","Joey","McGins"].map(p=>[p,{sandies:[],greenies:[],hio:[]}])),
+    2:Object.fromEntries(["Modes","Jake","Joey","McGins"].map(p=>[p,{sandies:[],greenies:[],hio:[]}])),
+    3:Object.fromEntries(["Modes","Jake","Joey","McGins"].map(p=>[p,{sandies:[],greenies:[],hio:[]}])),
+    4:Object.fromEntries(["Modes","Jake","Joey","McGins"].map(p=>[p,{sandies:[],greenies:[],hio:[]}]))
+  }
 };
 let TAB="board", RND=1, HOLE=0, SHOW_CARD=false;
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
@@ -451,7 +457,138 @@ function getStandings(){
   return PLAYERS.map(p=>({p,...acc[p],total:acc[p].rp+acc[p].sk+acc[p].ctp+acc[p].ld})).sort((a,b)=>b.total-a.total);
 }
 
-// ── TEAM MATCH CALCULATIONS ──────────────────────────────
+// ── JUNK CALCULATIONS ────────────────────────────────────
+const NASSAU = {front:25, back:25, overall:50};
+const JUNK_VAL = 5;
+
+// Auto-detect birdies & eagles from scores
+function getJunk(r, p){
+  const pars=CDATA[r].par;
+  const scores=S.scores[r][p];
+  const junkItems=[];
+  scores.forEach((s,h)=>{
+    const n=ps(s); if(!n) return;
+    const d=n-pars[h];
+    if(d<=-2) junkItems.push({h,type:"eagle",val:JUNK_VAL,label:"🦅 Eagle"});
+    else if(d===-1) junkItems.push({h,type:"birdie",val:JUNK_VAL,label:"🐦 Birdie"});
+  });
+  // hole in ones
+  const hio=S.junk?.[r]?.[p]?.hio||[];
+  hio.forEach(h=>junkItems.push({h,type:"hio",val:JUNK_VAL*10,label:"🏅 Hole in One!"}));
+  // sandies
+  const sandies=S.junk?.[r]?.[p]?.sandies||[];
+  sandies.forEach(h=>junkItems.push({h,type:"sandy",val:JUNK_VAL,label:"⛱️ Sandy"}));
+  // greenies: hit par 3 in regulation and made par or better
+  // tracked manually since we can't detect GIR
+  const greenies=S.junk?.[r]?.[p]?.greenies||[];
+  greenies.forEach(h=>junkItems.push({h,type:"greenie",val:JUNK_VAL,label:"🟢 Greenie"}));
+  // CTP: check if this player won CTP this round and made par or better on that hole
+  // CTP tracked in S.sb[r].ctp — bonus applied if they made par or better
+  // (CTP worth $5 per player in group, paid by each non-winner)
+  return junkItems;
+}
+
+function totalJunk(r,p){ return getJunk(r,p).reduce((a,b)=>a+b.val,0); }
+
+// Nassau money calc — team rounds
+function nassauMoney(r){
+  const teams=ROUND_TEAMS[r];
+  const rp=ROUND_PLAYERS[r]||PLAYERS;
+  if(!teams){
+    // R1: 3-player individual — each vs each pair, low score wins each leg
+    const result=Object.fromEntries(rp.map(p=>[p,0]));
+    ["front","back","overall"].forEach(leg=>{
+      const start=leg==="back"?9:0, end=leg==="front"?9:18;
+      const amt=leg==="overall"?50:25;
+      const tots=rp.map(p=>({p,t:tot(S.scores[r][p].slice(start,end))}))
+        .filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+      if(tots.length<2) return;
+      // Each pair: low beats high
+      for(let i=0;i<rp.length;i++){
+        for(let j=i+1;j<rp.length;j++){
+          const pi=tots.find(x=>x.p===rp[i]), pj=tots.find(x=>x.p===rp[j]);
+          if(!pi||!pj)continue;
+          const perMatch=Math.round(amt/(rp.length*(rp.length-1)/2));
+          if(pi.t<pj.t){result[rp[i]]+=perMatch;result[rp[j]]-=perMatch;}
+          else if(pj.t<pi.t){result[rp[j]]+=perMatch;result[rp[i]]-=perMatch;}
+        }
+      }
+    });
+    return result;
+  }
+  // Team round
+  const tm=calcTeamMatch(r);
+  if(!tm||tm.thru===0) return Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  const result=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  const legs=[
+    {key:"front",amt:NASSAU.front,data:tm.nassau.front},
+    {key:"back",amt:NASSAU.back,data:tm.nassau.back},
+    {key:"overall",amt:NASSAU.overall,data:tm.nassau.overall}
+  ];
+  const teamSize=teams.a.length;
+  legs.forEach(({amt,data})=>{
+    if(data.winner==="Tied") return;
+    const winners=data.winner==="A"?teams.a:teams.b;
+    const losers=data.winner==="A"?teams.b:teams.a;
+    const perPerson=amt/teamSize;
+    winners.forEach(p=>{if(rp.includes(p))result[p]+=perPerson;});
+    losers.forEach(p=>{if(rp.includes(p))result[p]-=perPerson;});
+  });
+  return result;
+}
+
+// CTP money — each non-winner pays $5 to winner if they made par or better
+function ctpMoney(r){
+  const sb=S.sb[r]||{};
+  const rp=ROUND_PLAYERS[r]||PLAYERS;
+  const result=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  if(!sb.ctp||!rp.includes(sb.ctp)) return result;
+  // Check winner made par or better on any par 3
+  const pars=CDATA[r].par;
+  const par3holes=pars.map((p,i)=>p===3?i:-1).filter(i=>i>=0);
+  const winnerMadePar=par3holes.some(h=>{
+    const n=ps(S.scores[r][sb.ctp]?.[h]); return n&&n<=pars[h];
+  });
+  if(!winnerMadePar) return result;
+  const others=rp.filter(p=>p!==sb.ctp);
+  result[sb.ctp]+=JUNK_VAL*others.length;
+  others.forEach(p=>{result[p]-=JUNK_VAL;});
+  return result;
+}
+
+// Grand total money across all completed rounds
+function totalMoney(){
+  const totals=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  ROUNDS.forEach(r=>{
+    const nm=nassauMoney(r);
+    const cm=ctpMoney(r);
+    PLAYERS.forEach(p=>{
+      totals[p]+=(nm[p]||0)+(cm[p]||0)+totalJunk(r,p);
+    });
+    // Junk paid by others: subtract from non-winners
+    const rp=ROUND_PLAYERS[r]||PLAYERS;
+    rp.forEach(p=>{
+      const jv=totalJunk(r,p);
+      if(jv>0){
+        // Each junk item: paid by each other player in the round
+        const others=rp.filter(x=>x!==p);
+        // Already added to winner above — subtract from others
+        // Actually let's just track net: winner gets +, others split -
+        // Recalc: each $5 junk = $5*(n-1) to winner, -$5 from each other
+        // getJunk already counted individual items, so:
+        const items=getJunk(r,p);
+        items.forEach(item=>{
+          others.forEach(o=>{totals[o]-=item.val;});
+          // Add back the extra (we already added item.val once above)
+          totals[p]+=(others.length-1)*item.val;
+        });
+      }
+    });
+  });
+  return totals;
+}
+
+// ── TEAM MATCH CALCULATIONS ──────────────────────────────// ── TEAM MATCH CALCULATIONS ──────────────────────────────
 // Best Ball: best gross score on each hole per team
 // Returns {holesA, holesB, holesHalved, thru, nassau:{front,back,overall}}
 function calcTeamMatch(r){
@@ -916,75 +1053,197 @@ function buildSkins(){
 
 // ── BETS ──────────────────────────────────────────────────
 function buildBets(){
-  const sbSec=`<div class="stitle">Closest to pin &amp; long drive</div>
-  ${ROUNDS.map(r=>{
-    const sb=S.sb[r]||{};
-    return`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-        <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
-      </div>
-      <div class="muted" style="margin-bottom:10px">${TEETIME[r]}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><span class="lbl">📍 Closest to pin</span>
-          <select class="sel" onchange="setSB(${r},'ctp',this.value)">
-            <option value="">— TBD —</option>
-            ${PLAYERS.map(p=>`<option value="${p}" ${sb.ctp===p?"selected":""}>${p}</option>`).join("")}
-          </select>
-          ${sb.ctp?`<div style="margin-top:6px;font-size:13px;font-weight:600;color:${PC[sb.ctp]}">${MEDALS[PLAYERS.indexOf(sb.ctp)]||""} ${sb.ctp}</div>`:""}
+  const tm=totalMoney();
+  const rp_all=[...new Set(ROUNDS.flatMap(r=>ROUND_PLAYERS[r]||PLAYERS))];
+  const sorted=[...rp_all].sort((a,b)=>tm[b]-tm[a]);
+  const maxAbs=Math.max(...rp_all.map(p=>Math.abs(tm[p])),1);
+
+  // ── MONEY SUMMARY ─────────────────────────────────────────
+  const moneySummary=`<div class="stitle">💵 Money ledger</div>
+  <div class="card" style="margin-bottom:12px">
+    ${sorted.map(p=>{
+      const v=tm[p];
+      const col=v>0?"#4dd68a":v<0?"#f07060":"var(--muted)";
+      const barW=Math.round(Math.abs(v)/maxAbs*100);
+      return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <img src="${PHOTOS[p]}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]};flex-shrink:0"/>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:${PC[p]}">${p}</div>
+          <div style="margin-top:4px;height:4px;background:var(--bg3);border-radius:2px">
+            <div style="height:4px;background:${col};border-radius:2px;width:${barW}%;transition:width 0.4s"></div>
+          </div>
         </div>
-        <div><span class="lbl">💨 Long drive</span>
-          <select class="sel" onchange="setSB(${r},'ld',this.value)">
-            <option value="">— TBD —</option>
-            ${PLAYERS.map(p=>`<option value="${p}" ${sb.ld===p?"selected":""}>${p}</option>`).join("")}
-          </select>
-          ${sb.ld?`<div style="margin-top:6px;font-size:13px;font-weight:600;color:${PC[sb.ld]}">${MEDALS[PLAYERS.indexOf(sb.ld)]||""} ${sb.ld}</div>`:""}
+        <div style="font-size:20px;font-weight:800;color:${col};min-width:56px;text-align:right">
+          ${v>=0?"+":"-"}$${Math.abs(v).toFixed(0)}
+        </div>
+      </div>`;
+    }).join("")}
+    <div class="muted" style="margin-top:4px;font-size:11px">$25/$25/$50 Nassau · Junk $5 each · CTP $5/player</div>
+  </div>`;
+
+  // ── PER-ROUND BREAKDOWN ────────────────────────────────────
+  const roundBreakdown=ROUNDS.map(r=>{
+    const rp=ROUND_PLAYERS[r]||PLAYERS;
+    const nm=nassauMoney(r);
+    const cm=ctpMoney(r);
+    const tm_r=calcTeamMatch(r);
+    const teams=ROUND_TEAMS[r];
+    const sb=S.sb[r]||{};
+    const hasData=rp.some(p=>tot(S.scores[r][p])!==null);
+    if(!hasData) return`<div class="card" style="opacity:0.5;margin-bottom:10px">
+      <div style="font-weight:600">Round ${r} — ${CDATA[r].short}</div>
+      <div class="muted" style="margin-top:4px">Not started</div>
+    </div>`;
+
+    const nassauLegs=teams?[
+      {label:"Front 9",amt:NASSAU.front,data:tm_r?.nassau?.front},
+      {label:"Back 9",amt:NASSAU.back,data:tm_r?.nassau?.back},
+      {label:"Overall",amt:NASSAU.overall,data:tm_r?.nassau?.overall}
+    ]:[];
+
+    return`<div class="card" style="margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:10px">Round ${r} — ${CDATA[r].short}</div>
+
+      ${teams&&tm_r?`
+      <!-- Nassau legs -->
+      <div style="margin-bottom:12px">
+        <div class="lbl">Nassau ($25/$25/$50)</div>
+        ${nassauLegs.map(leg=>{
+          if(!leg.data)return"";
+          const w=leg.data.winner;
+          const wLabel=w==="A"?teams.a.join(" & "):w==="B"?teams.b.join(" & "):null;
+          const wCol=w==="A"?"#2B7DD6":w==="B"?"#D44A38":"var(--muted)";
+          return`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--border)">
+            <span class="muted">${leg.label}</span>
+            <span style="font-weight:600;color:${wCol}">${wLabel||"Tied"}</span>
+            <span style="font-weight:700;color:${wCol}">${w!=="Tied"?`$${leg.amt}`:"Push"}</span>
+          </div>`;
+        }).join("")}
+        ${!teams?`<div class="muted">3-player individual Nassau</div>`:""}
+      </div>
+      `:""}
+
+      <!-- Individual round money -->
+      <div class="lbl">Round totals</div>
+      ${rp.map(p=>{
+        const nassauAmt=nm[p]||0;
+        const ctpAmt=cm[p]||0;
+        const junkAmt=totalJunk(r,p);
+        const rndTotal=nassauAmt+ctpAmt+junkAmt;
+        const col=rndTotal>0?"#4dd68a":rndTotal<0?"#f07060":"var(--muted)";
+        return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <img src="${PHOTOS[p]}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>
+          <span style="color:${PC[p]};font-weight:600;flex:1">${p}</span>
+          <div style="text-align:right">
+            <div style="font-size:16px;font-weight:800;color:${col}">${rndTotal>=0?"+":"-"}$${Math.abs(rndTotal).toFixed(0)}</div>
+            <div style="font-size:10px;color:var(--muted)">${nassauAmt!==0?`Nassau ${nassauAmt>=0?"+":""}$${nassauAmt.toFixed(0)}`:""} ${junkAmt>0?`· Junk +$${junkAmt}`:""}</div>
+          </div>
+        </div>`;
+      }).join("")}
+
+      <!-- Junk detail per player -->
+      <div style="margin-top:8px;border-top:0.5px solid var(--border);padding-top:10px">
+        <div class="lbl">Junk earned</div>
+        ${rp.map(p=>{
+          const items=getJunk(r,p);
+          if(!items.length)return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><img src="${PHOTOS[p]}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/><span style="font-size:12px;color:var(--muted)">${p} — none yet</span></div>`;
+          return`<div style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <img src="${PHOTOS[p]}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>
+              <span style="font-size:12px;font-weight:600;color:${PC[p]}">${p}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;padding-left:26px">
+              ${items.map(j=>`<span style="font-size:11px;background:rgba(200,144,26,0.15);color:#C8901A;border-radius:6px;padding:2px 7px">${j.label} H${j.h+1} +$${j.val}</span>`).join("")}
+            </div>
+          </div>`;
+        }).join("")}
+
+        <!-- Manual junk entry -->
+        <div style="margin-top:8px">
+          <div class="lbl">Log manual junk</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${rp.map(p=>`<button onclick="openJunkModal(${r},'${p}')" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px">
+              <img src="${PHOTOS[p]}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>
+              <span style="font-size:12px;color:${PC[p]}">${p}</span>
+            </button>`).join("")}
+          </div>
+        </div>
+      </div>
+
+      <!-- CTP / LD -->
+      <div style="margin-top:10px;border-top:0.5px solid var(--border);padding-top:10px">
+        <div class="lbl">Closest to pin &amp; long drive</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:5px">📍 CTP (must make par)</div>
+            <select class="sel" style="font-size:12px" onchange="setSB(${r},'ctp',this.value)">
+              <option value="">— TBD —</option>
+              ${rp.map(p=>`<option value="${p}" ${(sb.ctp===p)?"selected":""}>${p}</option>`).join("")}
+            </select>
+            ${sb.ctp?`<div style="margin-top:4px;font-size:12px;font-weight:600;color:${PC[sb.ctp]}">${sb.ctp} · +$${JUNK_VAL*(rp.length-1)}</div>`:""}
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:5px">💨 Long drive</div>
+            <select class="sel" style="font-size:12px" onchange="setSB(${r},'ld',this.value)">
+              <option value="">— TBD —</option>
+              ${rp.map(p=>`<option value="${p}" ${(sb.ld===p)?"selected":""}>${p}</option>`).join("")}
+            </select>
+            ${sb.ld?`<div style="margin-top:4px;font-size:12px;font-weight:600;color:${PC[sb.ld]}">${sb.ld}</div>`:""}
+          </div>
         </div>
       </div>
     </div>`;
-  }).join("")}`;
-  const mForm=SHOW_MF?`<div class="card" style="border-color:rgba(34,168,97,0.35);margin-bottom:12px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div><span class="lbl">Round</span>
-        <select class="sel" onchange="mfSet('round',parseInt(this.value))">
-          ${ROUNDS.map(r=>`<option value="${r}" ${MF.round===r?"selected":""}>${COURSES[r]}</option>`).join("")}
-        </select>
-      </div>
-      <div><span class="lbl">Format</span>
-        <select class="sel" onchange="mfSet('fmt',this.value)">
-          ${["Match Play","Nassau","Stroke Play","Skins","Best Ball","Scramble"].map(f=>`<option${MF.fmt===f?" selected":""}>${f}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div><span class="lbl">Team 1</span>${PLAYERS.map(p=>`<button class="ptog${MF.t1.includes(p)?" on":""}" style="${MF.t1.includes(p)?"color:"+PC[p]+";border-color:"+PC[p]:"color:var(--muted)"}" onclick="mfTogT('t1','${p}')">${MF.t1.includes(p)?"✓ ":""}${p}</button>`).join("")}</div>
-      <div><span class="lbl">Team 2</span>${PLAYERS.map(p=>`<button class="ptog${MF.t2.includes(p)?" on":""}" style="${MF.t2.includes(p)?"color:"+PC[p]+";border-color:"+PC[p]:"color:var(--muted)"}" onclick="mfTogT('t2','${p}')">${MF.t2.includes(p)?"✓ ":""}${p}</button>`).join("")}</div>
-    </div>
-    <div style="margin-bottom:10px"><span class="lbl">Winner</span>
-      <select class="sel" onchange="mfSet('winner',this.value)">
-        <option value="">— select —</option>
-        ${PLAYERS.map(p=>`<option${MF.winner===p?" selected":""}>${p}</option>`).join("")}
-        ${MF.t1.length>1?`<option value="${MF.t1.join(" & ")}"${MF.winner===MF.t1.join(" & ")?" selected":""}>Team 1: ${MF.t1.join(" & ")}</option>`:""}
-        ${MF.t2.length>1?`<option value="${MF.t2.join(" & ")}"${MF.winner===MF.t2.join(" & ")?" selected":""}>Team 2: ${MF.t2.join(" & ")}</option>`:""}
-      </select>
-    </div>
-    <div style="margin-bottom:12px"><span class="lbl">Stake / notes</span><input class="inp" value="${MF.notes}" placeholder="$20 Nassau, beers, bragging rights…" onblur="mfSet('notes',this.value)"/></div>
-    <div style="display:flex;gap:8px"><button class="action-btn" style="flex:1" onclick="addMatch()">Save match</button><button class="pill-btn" onclick="toggleMF()">Cancel</button></div>
-  </div>`:"";
-  const matchList=S.matches.length===0&&!SHOW_MF
-    ?`<div class="muted" style="text-align:center;padding:20px 0">No matches logged yet</div>`
-    :[...S.matches].reverse().map(m=>`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="muted" style="margin-bottom:4px">R${m.round} · ${m.fmt} · ${COURSES[m.round]}</div>
-          ${(m.t1?.length||m.t2?.length)?`<div style="margin-bottom:5px;font-size:13px;color:var(--muted)">${m.t1?.join(" & ")||""}${m.t1?.length&&m.t2?.length?" vs ":""}${m.t2?.join(" & ")||""}</div>`:""}
-          <div style="font-size:14px">🏆 <span style="color:var(--green);font-weight:600">${m.winner}</span> wins${m.notes?` <span class="muted">· ${m.notes}</span>`:""}</div>
+  }).join("");
+
+  // ── JUNK MODAL ────────────────────────────────────────────
+  const junkModal=JUNK_MODAL?`<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:997;display:flex;align-items:flex-end" onclick="closeJunkModal()">
+    <div style="width:100%;background:var(--bg2);border-radius:16px 16px 0 0;padding:20px;padding-bottom:calc(var(--safe-bot)+20px)" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <img src="${PHOTOS[JUNK_MODAL.p]}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid ${PC[JUNK_MODAL.p]}"/>
+          <div style="font-weight:700;font-size:16px;color:${PC[JUNK_MODAL.p]}">${JUNK_MODAL.p} — R${JUNK_MODAL.r} Junk</div>
         </div>
-        <button class="del-btn" onclick="delMatch(${m.id})">×</button>
+        <button onclick="closeJunkModal()" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text);cursor:pointer">Done</button>
       </div>
-    </div>`).join("");
-  return`<div class="pg">${sbSec}<div class="sec-hdr"><div class="stitle">Matches &amp; bets</div><button class="action-btn" onclick="toggleMF()">+ Log</button></div>${mForm}${matchList}</div>`;
+      <div class="lbl">Hole number</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">
+        ${Array.from({length:18},(_,h)=>`<button onclick="setJunkHole(${h})" style="width:34px;height:34px;border-radius:7px;border:0.5px solid ${JUNK_MODAL.hole===h?"var(--green)":"var(--border)"};background:${JUNK_MODAL.hole===h?"rgba(34,168,97,0.15)":"var(--bg3)"};color:${JUNK_MODAL.hole===h?"var(--green)":"var(--muted)"};cursor:pointer;font-size:12px;font-weight:600">${h+1}</button>`).join("")}
+      </div>
+      ${JUNK_MODAL.hole!==null?`
+      <div class="lbl">What junk?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${[{key:"sandies",label:"⛱️ Sandy",val:5},{key:"greenies",label:"🟢 Greenie",val:5},{key:"hio",label:"🏅 Hole in One!",val:50}].map(j=>{
+          const has=(S.junk?.[JUNK_MODAL.r]?.[JUNK_MODAL.p]?.[j.key]||[]).includes(JUNK_MODAL.hole);
+          return`<button onclick="toggleJunk(${JUNK_MODAL.r},'${JUNK_MODAL.p}','${j.key}',${JUNK_MODAL.hole})"
+            style="padding:12px 8px;border-radius:10px;border:0.5px solid ${has?"var(--green)":"var(--border)"};background:${has?"rgba(34,168,97,0.15)":"var(--bg3)"};cursor:pointer;text-align:center">
+            <div style="font-size:22px">${j.label.split(" ")[0]}</div>
+            <div style="font-size:12px;font-weight:600;color:${has?"var(--green)":"var(--text)"};margin-top:4px">${j.label.substring(j.label.indexOf(" ")+1)}</div>
+            <div style="font-size:11px;color:var(--muted)">+$${j.val}</div>
+          </button>`;
+        }).join("")}
+      </div>`:`<div class="muted" style="text-align:center;padding:20px 0">Pick a hole number first</div>`}
+    </div>
+  </div>`:"";
+
+  return`<div class="pg" style="padding-bottom:20px">${junkModal}${moneySummary}${roundBreakdown}</div>`;
 }
 
+// ── JUNK MODAL STATE ──────────────────────────────────────
+let JUNK_MODAL=null;
+function openJunkModal(r,p){JUNK_MODAL={r,p,hole:null};render();}
+function closeJunkModal(){JUNK_MODAL=null;render();}
+function setJunkHole(h){if(JUNK_MODAL){JUNK_MODAL.hole=h;render();}}
+function toggleJunk(r,p,type,h){
+  if(!S.junk)S.junk={};
+  if(!S.junk[r])S.junk[r]={};
+  if(!S.junk[r][p])S.junk[r][p]={sandies:[],greenies:[],hio:[]};
+  const arr=S.junk[r][p][type];
+  const idx=arr.indexOf(h);
+  if(idx>=0)arr.splice(idx,1);else arr.push(h);
+  saveS();render();
+}
+
+// ── GLORY ─────────────────────────────────────────────────
 // ── GLORY ─────────────────────────────────────────────────
 function buildGlory(){
   const st=getStandings();
