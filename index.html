@@ -308,6 +308,7 @@ let S = {
   }
 };
 let TAB="board", RND=1, HOLE=0, SHOW_CARD=false, ENTRY_RND=1, SHOW_AERIAL=false;
+const VIEW_ONLY = new URLSearchParams(window.location.search).get("view")==="1";
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
 let SHOW_MF=false;
 
@@ -1124,14 +1125,18 @@ function buildLockedEntry(){
 
     <!-- Read-only score summary -->
     ${rp.map(p=>{
-      const gross=tot(sc[p]);
+      // Only count holes with scores
+      let grossStrokes2=0,parPlayed2=0,holesIn2=0;
+      sc[p].forEach((s,h)=>{const n=ps(s);if(n){grossStrokes2+=n;parPlayed2+=pars[h];holesIn2++;}});
+      const gross=holesIn2>0?grossStrokes2:null;
       const tee=S.teeSet?.[RND]||"Blue";
       const slope=CDATA[RND].tees[tee]?.s||113;
       const hi=HI[p];
       const ch=hi!=null?Math.round(hi*slope/113):null;
-      const net=gross!=null&&ch!=null?gross-ch:null;
-      const gDiff=gross!=null?gross-parT:null;
-      const nDiff=net!=null?net-parT:null;
+      const proratedCh2=ch!=null&&holesIn2>0?Math.round(ch*(holesIn2/18)):null;
+      const net=gross!=null&&proratedCh2!=null?gross-proratedCh2:null;
+      const gDiff=gross!=null?gross-parPlayed2:null;
+      const nDiff=net!=null?net-parPlayed2:null;
       const gStr=gDiff===null?"—":gDiff===0?"E":gDiff>0?"+"+gDiff:""+gDiff;
       const nStr=nDiff===null?"—":nDiff===0?"E":nDiff>0?"+"+nDiff:""+nDiff;
       const gCol=gDiff===null?"var(--muted)":gDiff<0?"#4dd68a":gDiff>0?"#f07060":"var(--text)";
@@ -1207,14 +1212,18 @@ function buildScores(){
 
   // Gross and net summary per player
   function summaryCards(){
-    const parTotal=pSum(pars);
     return rp.map(p=>{
-      const gross=tot(sc[p]);
+      // Only count holes with scores entered
+      let grossStrokes=0, parPlayed=0, holesIn=0;
+      sc[p].forEach((s,h)=>{const n=ps(s);if(n){grossStrokes+=n;parPlayed+=pars[h];holesIn++;}});
+      const gross=holesIn>0?grossStrokes:null;
       const hi=HI[p];
       const ch=hi!=null?Math.round(hi*teeData.s/113):null;
-      const net=gross!=null&&ch!=null?gross-ch:null;
-      const gDiff=gross!=null?gross-parTotal:null;
-      const nDiff=net!=null?net-parTotal:null;
+      // Prorate handicap to holes played
+      const proratedCh=ch!=null&&holesIn>0?Math.round(ch*(holesIn/18)):null;
+      const net=gross!=null&&proratedCh!=null?gross-proratedCh:null;
+      const gDiff=gross!=null?gross-parPlayed:null;
+      const nDiff=net!=null?net-parPlayed:null;
       const gStr=gDiff===null?"—":gDiff===0?"E":gDiff>0?"+"+gDiff:""+gDiff;
       const nStr=nDiff===null?"—":nDiff===0?"E":nDiff>0?"+"+nDiff:""+nDiff;
       const gCol=gDiff===null?"var(--muted)":gDiff<0?"#4dd68a":gDiff>0?"#f07060":"var(--text)";
@@ -1707,6 +1716,7 @@ function setShowCard(v){SHOW_CARD=v;render();}
 function setTee(r,t){if(!S.teeSet)S.teeSet={};S.teeSet[r]=t;saveS();render();}
 
 function adjScore(p,delta){
+  if(VIEW_ONLY)return;
   const cur=ps(S.scores[RND][p][HOLE]);
   if(delta<0&&(cur===null||cur<=1)){S.scores[RND][p][HOLE]="";saveS();if(navigator.vibrate)navigator.vibrate(8);render();return;}
   let nv=(cur||0)+delta;
@@ -1722,6 +1732,7 @@ function adjScore(p,delta){
 }
 
 function quickPick(p,v){
+  if(VIEW_ONLY)return;
   S.scores[RND][p][HOLE]=String(v);
   saveS();
   if(navigator.vibrate)navigator.vibrate(8);
@@ -1738,10 +1749,11 @@ function delMatch(id){S.matches=S.matches.filter(m=>m.id!==id);saveS();render();
 
 // ── SHARE ─────────────────────────────────────────────────
 function shareScores(){
+  // Share a view-only link — recipients can see but not edit
   try{
     const payload=JSON.stringify({scores:S.scores,sb:S.sb,matches:S.matches,teeSet:S.teeSet});
     const b64=btoa(encodeURIComponent(payload));
-    const url=location.origin+location.pathname+"?d="+b64;
+    const url=location.origin+location.pathname+"?view=1&d="+b64;
     if(navigator.share){navigator.share({title:"MB Golf 2026",text:"Live scores",url});}
     else if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>alert("Link copied! Send to the group."));}
     else{prompt("Copy this link:",url);}
