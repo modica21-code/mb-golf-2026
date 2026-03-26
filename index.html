@@ -1077,7 +1077,7 @@ function buildEntry(){
     </div>
 
     <!-- Hole dots: compact single row, scrollable -->
-    <div style="display:flex;gap:3px;padding:6px 10px;border-bottom:0.5px solid var(--border);overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch">
+    <div data-dots-row style="display:flex;gap:3px;padding:6px 10px;border-bottom:0.5px solid var(--border);overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch;scrollbar-width:none">
       ${Array.from({length:18},(_,h)=>{
         const rp2=ROUND_PLAYERS[RND]||PLAYERS;
         const done=rp2.every(p=>ps(S.scores[RND][p][h]));
@@ -1631,8 +1631,21 @@ function render(){
   const tabs=[["board","🏠","Board"],["entry","✏️","Entry"],["scores","📋","Scores"],["skins","💰","Skins"],["bets","💵","Bets"],["glory","🥇","Glory"]];
   document.getElementById("tab-bar").innerHTML=tabs.map(([id,ic,lb])=>`<button class="tab-btn${TAB===id?" active":""}" onclick="setTab('${id}')">${ic}<span>${lb}</span></button>`).join("");
   const el = document.getElementById("content");
+  // Save dots scroll before re-render
+  const _dotsEl = TAB==="entry" ? el.querySelector("[data-dots-row]") : null;
+  const _dotsScroll = _dotsEl ? _dotsEl.scrollLeft : 0;
   el.innerHTML=TAB==="board"?buildBoard():TAB==="entry"?buildEntry():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
   if(TAB!=="entry") el.scrollTop=0;
+  // Restore dots scroll
+  if(TAB==="entry" && _dotsScroll>0){
+    const _newDots = el.querySelector("[data-dots-row]");
+    if(_newDots) _newDots.scrollLeft = _dotsScroll;
+  }
+  // Restore dots scroll
+  if(TAB==="entry"&&savedDotsScroll>0){
+    const newDots=document.querySelector("#content [style*='overflow-x:auto']");
+    if(newDots) newDots.scrollLeft=savedDotsScroll;
+  }
 
   // Aerial modal
   const aerialModal = document.getElementById("aerial-modal");
