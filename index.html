@@ -123,8 +123,8 @@ input[type=number]{-moz-appearance:textfield;}
 .h-dot.front{opacity:0.5;}
 
 /* Player score rows */
-#player-rows{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 16px;min-height:0;}
-.p-row{display:flex;align-items:center;gap:10px;background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+#player-rows{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 10px;min-height:0;}
+.p-row{display:flex;align-items:center;gap:8px;background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:7px 10px;margin-bottom:6px;}
 .p-row-info{flex:1;min-width:0;}
 .p-row-name{font-weight:700;font-size:16px;}
 .p-row-run{font-size:12px;margin-top:2px;}
@@ -988,7 +988,7 @@ function buildPlayerRows(){
     const qRow=qpicks.map(q=>{
       const qv=par+q.d;if(qv<1)return"";
       const active=v===qv;
-      return`<button onclick="quickPick('${p}',${qv})" style="flex:1;padding:4px 1px;border-radius:7px;border:0.5px solid ${active?q.sc:"var(--border)"};background:${active?q.sc+"22":"none"};color:${active?q.sc:"var(--muted)"};font-size:10px;cursor:pointer;font-weight:${active?700:400}">${q.d===0?"Par":q.d===-2?"Eagle":q.d===-1?"Birdie":q.label}</button>`;
+      return`<button onclick="quickPick('${p}',${qv})" style="flex:1;padding:3px 1px;border-radius:6px;border:0.5px solid ${active?q.sc:"var(--border)"};background:${active?q.sc+"22":"none"};color:${active?q.sc:"var(--muted)"};font-size:10px;cursor:pointer;font-weight:${active?700:400}">${q.d===0?"Par":q.d===-2?"Egl":q.d===-1?"Bird":q.label}</button>`;
     }).join("");
 
     return `<div class="p-row" id="pr-${p}" style="flex-direction:column;align-items:stretch;gap:5px;padding:8px 10px;margin-bottom:6px">
@@ -1058,76 +1058,50 @@ function buildScoreCard(){
 
 function buildEntry(){
   const par = CDATA[RND].par[HOLE];
-  const holeLabel = `Hole ${HOLE+1}`;
   const dist = CDATA[RND].yds[HOLE]||"";
-  const cd = CDATA[RND];
+  const locked = isLocked(RND);
+
+  if(locked) return buildLockedEntry();
 
   return `<div id="live-wrap">
-    <!-- Running leaderboard strip -->
-    <div id="live-lb" style="flex-shrink:0">${buildLiveLeaderboard()}</div>
 
-    <!-- Round selector -->
-    <div id="rnd-strip" style="flex-shrink:0">
-      ${ROUNDS.map(r=>{
-        const locked=isLocked(r);
-        const rp=ROUND_PLAYERS[r]||PLAYERS;
-        const complete=rp.every(p=>CDATA[r].par.every((_,h)=>ps(S.scores[r][p][h])));
-        return`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r})" style="font-size:12px">
-          ${locked?"✓ ":complete&&!locked?"⬤ ":""}R${r} · ${CDATA[r].short}
-        </button>`;
+    <!-- Compact top bar: round + hole nav in ONE row -->
+    <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0">
+      <button class="nav-arrow" style="width:40px;height:40px;font-size:20px" onclick="setHole(Math.max(0,HOLE-1))">‹</button>
+      <div style="flex:1;text-align:center">
+        <div style="font-size:26px;font-weight:800;line-height:1">Hole ${HOLE+1}</div>
+        <div style="font-size:12px;color:var(--muted)">Par ${par}${dist?" · "+dist+"y":""} · ${CDATA[RND].short}</div>
+      </div>
+      <button class="nav-arrow" style="width:40px;height:40px;font-size:20px" onclick="setHole(Math.min(17,HOLE+1))">›</button>
+      <button onclick="openAerial()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid var(--border);background:var(--bg3);font-size:15px;cursor:pointer">🛰️</button>
+    </div>
+
+    <!-- Hole dots: compact single row, scrollable -->
+    <div style="display:flex;gap:3px;padding:6px 10px;border-bottom:0.5px solid var(--border);overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch">
+      ${Array.from({length:18},(_,h)=>{
+        const rp2=ROUND_PLAYERS[RND]||PLAYERS;
+        const done=rp2.every(p=>ps(S.scores[RND][p][h]));
+        const cls=h===HOLE?"active":done?"done":"";
+        return`<button style="min-width:28px;height:24px;border-radius:6px;border:0.5px solid ${h===HOLE?"var(--green)":"var(--border)"};background:${h===HOLE?"rgba(34,168,97,0.15)":done?"var(--bg2)":"var(--bg3)"};color:${h===HOLE?"var(--green)":done?"var(--muted)":"var(--muted)"};font-size:11px;font-weight:${h===HOLE?700:400};cursor:pointer;flex-shrink:0" onclick="setHole(${h})">${h+1}</button>`;
       }).join("")}
     </div>
 
-    <!-- Team match bar (shown when teams playing) -->
-    <div id="match-bar" style="display:none;padding:8px 14px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0"></div>
-
-    <!-- Minimal course line -->
-    <div style="padding:6px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:12px;font-weight:600;color:var(--text)">${cd.short}</span>
-      <span style="font-size:11px;color:var(--muted)">${TEETIME[RND]}</span>
-    </div>
-
-    <!-- Hole navigation -->
-    <div id="hole-nav" style="flex-shrink:0">
-      <button class="nav-arrow" onclick="setHole(Math.max(0,HOLE-1))">‹</button>
-      <div id="hole-display">
-        <div class="hole-num">${holeLabel}</div>
-        <div class="hole-par">Par ${par}${dist?` · ${dist}y`:""}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button class="nav-arrow" onclick="setHole(Math.min(17,HOLE+1))">›</button>
-        <button onclick="openAerial()" title="Aerial view" style="width:48px;height:28px;border-radius:8px;border:0.5px solid var(--border);background:var(--bg3);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">🛰️</button>
-      </div>
-    </div>
-
-    <!-- Hole dots progress -->
-    <div id="hole-dots" style="flex-shrink:0">${buildHoleDots()}</div>
-
-    <!-- View toggle -->
-    <div id="sc-toggle" style="flex-shrink:0">
-      <button class="pill-btn${!SHOW_CARD?" active":""}" onclick="setShowCard(false)">Live entry</button>
-      <button class="pill-btn${SHOW_CARD?" active":""}" onclick="setShowCard(true)">Full scorecard</button>
-    </div>
-
-    ${SHOW_CARD
-      ? `<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0">${buildScoreCard()}</div>`
-      : isLocked(RND)
-        ? buildLockedEntry()
-        : `<div id="player-rows">${buildPlayerRows()}</div>`}
+    <!-- Player rows — gets ALL remaining space -->
+    <div id="player-rows">${buildPlayerRows()}</div>
 
     ${(()=>{
-      if(isLocked(RND)) return "";
       const rp=ROUND_PLAYERS[RND]||PLAYERS;
       const allDone=rp.every(p=>CDATA[RND].par.every((_,h)=>ps(S.scores[RND][p][h])));
       if(!allDone) return "";
-      return`<div style="padding:12px 14px;flex-shrink:0;background:var(--bg2);border-top:0.5px solid var(--border)">
-        <button onclick="submitRound(${RND})" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-          <span>✓</span> Submit Round ${RND}
+      return`<div style="padding:10px 12px;flex-shrink:0;background:var(--bg2);border-top:0.5px solid var(--border)">
+        <button onclick="submitRound(${RND})" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:12px;padding:13px;font-size:16px;font-weight:700;cursor:pointer">
+          ✓ Submit Round ${RND}
         </button>
       </div>`;
     })()}
   </div>`;
 }
+
 
 function buildLockedEntry(){
   const rp=ROUND_PLAYERS[RND]||PLAYERS;
