@@ -94,7 +94,7 @@ input[type=number]{-moz-appearance:textfield;}
 .sec-hdr .stitle{margin:0;}
 
 /* ── LIVE SCORING ──────────────────────────────────────── */
-#live-wrap{display:flex;flex-direction:column;height:100%;}
+#live-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 
 /* Running leaderboard strip */
 #live-lb{display:flex;gap:0;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;overflow-x:auto;}
@@ -123,17 +123,17 @@ input[type=number]{-moz-appearance:textfield;}
 .h-dot.front{opacity:0.5;}
 
 /* Player score rows */
-#player-rows{flex:1;overflow-y:auto;padding:10px 14px 20px;}
-.p-row{display:flex;align-items:center;gap:12px;background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+#player-rows{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 14px 24px;min-height:0;}
+.p-row{display:flex;align-items:center;gap:10px;background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
 .p-row-info{flex:1;min-width:0;}
 .p-row-name{font-weight:700;font-size:16px;}
 .p-row-run{font-size:12px;margin-top:2px;}
 .p-row-ctrl{display:flex;align-items:center;gap:0;}
-.pm-btn{width:46px;height:46px;border-radius:12px;border:none;font-size:24px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pm-btn{width:42px;height:42px;border-radius:10px;border:none;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pm-btn:active{transform:scale(0.92);}
 .pm-minus{background:var(--bg3);color:var(--text);}
 .pm-plus{background:var(--green);color:#fff;}
-.pm-val{font-size:28px;font-weight:800;min-width:44px;text-align:center;}
+.pm-val{font-size:26px;font-weight:800;min-width:40px;text-align:center;}
 
 /* Scorecard toggle */
 #sc-toggle{display:flex;gap:8px;padding:10px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0;}
@@ -945,11 +945,11 @@ function buildPlayerRows(){
     const qRow=qpicks.map(q=>{
       const qv=par+q.d;if(qv<1)return"";
       const active=v===qv;
-      return`<button onclick="quickPick('${p}',${qv})" style="flex:1;padding:5px 2px;border-radius:8px;border:0.5px solid ${active?q.sc:"var(--border)"};background:${active?q.sc+"22":"none"};color:${active?q.sc:"var(--muted)"};font-size:10px;cursor:pointer;font-weight:${active?700:400}">${q.d===0?"Par":q.d===-2?"Eagle":q.d===-1?"Birdie":q.label}</button>`;
+      return`<button onclick="quickPick('${p}',${qv})" style="flex:1;padding:4px 1px;border-radius:7px;border:0.5px solid ${active?q.sc:"var(--border)"};background:${active?q.sc+"22":"none"};color:${active?q.sc:"var(--muted)"};font-size:10px;cursor:pointer;font-weight:${active?700:400}">${q.d===0?"Par":q.d===-2?"Eagle":q.d===-1?"Birdie":q.label}</button>`;
     }).join("");
 
-    return `<div class="p-row" id="pr-${p}" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div style="display:flex;align-items:center;gap:12px">
+    return `<div class="p-row" id="pr-${p}" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;align-items:center;gap:10px">
         <img src="${PHOTOS[p]}" class="av av-lg" style="border-color:${PC[p]}" />
         <div class="p-row-info">
           <div class="p-row-name" style="color:${PC[p]}">${p}${nameExtra}</div>
@@ -1023,10 +1023,10 @@ function buildScores(){
 
   return `<div id="live-wrap">
     <!-- Running leaderboard strip -->
-    <div id="live-lb">${buildLiveLeaderboard()}</div>
+    <div id="live-lb" style="flex-shrink:0">${buildLiveLeaderboard()}</div>
 
     <!-- Round selector -->
-    <div id="rnd-strip">
+    <div id="rnd-strip" style="flex-shrink:0">
       ${ROUNDS.map(r=>`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r})" style="font-size:12px">R${r} · ${CDATA[r].short}</button>`).join("")}
     </div>
 
@@ -1034,7 +1034,7 @@ function buildScores(){
     <div id="match-bar" style="display:none;padding:8px 14px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0"></div>
 
     <!-- Course info + tee selector -->
-    <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2)">
+    <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
         <div style="font-size:13px;font-weight:600">${cd.name}</div>
         <div style="font-size:12px;color:var(--muted)">${teeData.y.toLocaleString()}y · ${teeData.r}/${teeData.s}</div>
@@ -1048,7 +1048,7 @@ function buildScores(){
     </div>
 
     <!-- Hole navigation -->
-    <div id="hole-nav">
+    <div id="hole-nav" style="flex-shrink:0">
       <button class="nav-arrow" onclick="setHole(Math.max(0,HOLE-1))">‹</button>
       <div id="hole-display">
         <div class="hole-num">${holeLabel}</div>
@@ -1058,15 +1058,15 @@ function buildScores(){
     </div>
 
     <!-- Hole dots progress -->
-    <div id="hole-dots">${buildHoleDots()}</div>
+    <div id="hole-dots" style="flex-shrink:0">${buildHoleDots()}</div>
 
     <!-- View toggle -->
-    <div id="sc-toggle">
+    <div id="sc-toggle" style="flex-shrink:0">
       <button class="pill-btn${!SHOW_CARD?" active":""}" onclick="setShowCard(false)">Live entry</button>
       <button class="pill-btn${SHOW_CARD?" active":""}" onclick="setShowCard(true)">Full scorecard</button>
     </div>
 
-    ${SHOW_CARD ? buildScoreCard() : `<div id="player-rows">${buildPlayerRows()}</div>`}
+    ${SHOW_CARD ? `<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0">${buildScoreCard()}</div>` : `<div id="player-rows">${buildPlayerRows()}</div>`}
   </div>`;
 }
 
