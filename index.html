@@ -557,32 +557,51 @@ function ctpMoney(r){
 }
 
 // Grand total money across all completed rounds
+// Team-aware junk money: in team rounds, junk pools to the team
+// e.g. Team A birdie → Team B each pay $5, split equally to Team A members
+function junkMoney(r){
+  const result=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  const rp=ROUND_PLAYERS[r]||PLAYERS;
+  const teams=ROUND_TEAMS[r];
+
+  if(!teams){
+    // R1 individual: each junk item — winner gets $5 from each other player
+    rp.forEach(p=>{
+      getJunk(r,p).forEach(item=>{
+        const others=rp.filter(x=>x!==p);
+        result[p]+=item.val*others.length;
+        others.forEach(o=>{result[o]-=item.val;});
+      });
+    });
+  } else {
+    // Team rounds: junk pools per team hole by hole
+    // For each junk item earned by a player, their TEAM collects from the OTHER TEAM
+    ["a","b"].forEach(side=>{
+      const myTeam=teams[side];
+      const theirTeam=side==="a"?teams.b:teams.a;
+      // Collect all junk items from this team
+      myTeam.forEach(p=>{
+        getJunk(r,p).forEach(item=>{
+          // Each player on the other team pays $5
+          theirTeam.forEach(o=>{result[o]-=item.val;});
+          // Split the take equally among my team members
+          const take=(item.val*theirTeam.length)/myTeam.length;
+          myTeam.forEach(tp=>{result[tp]+=take;});
+        });
+      });
+    });
+  }
+  return result;
+}
+
 function totalMoney(){
   const totals=Object.fromEntries(PLAYERS.map(p=>[p,0]));
   ROUNDS.forEach(r=>{
     const nm=nassauMoney(r);
     const cm=ctpMoney(r);
+    const jm=junkMoney(r);
     PLAYERS.forEach(p=>{
-      totals[p]+=(nm[p]||0)+(cm[p]||0)+totalJunk(r,p);
-    });
-    // Junk paid by others: subtract from non-winners
-    const rp=ROUND_PLAYERS[r]||PLAYERS;
-    rp.forEach(p=>{
-      const jv=totalJunk(r,p);
-      if(jv>0){
-        // Each junk item: paid by each other player in the round
-        const others=rp.filter(x=>x!==p);
-        // Already added to winner above — subtract from others
-        // Actually let's just track net: winner gets +, others split -
-        // Recalc: each $5 junk = $5*(n-1) to winner, -$5 from each other
-        // getJunk already counted individual items, so:
-        const items=getJunk(r,p);
-        items.forEach(item=>{
-          others.forEach(o=>{totals[o]-=item.val;});
-          // Add back the extra (we already added item.val once above)
-          totals[p]+=(others.length-1)*item.val;
-        });
-      }
+      totals[p]+=(nm[p]||0)+(cm[p]||0)+(jm[p]||0);
     });
   });
   return totals;
@@ -1171,25 +1190,47 @@ function buildScores(){
     </div>
     <div style="margin-top:8px;font-size:11px;color:var(--muted)">● = stroke received on hole</div>
 
-    <!-- Junk earnings per player -->
+    <!-- Junk earnings -->
     <div class="card" style="margin-top:12px">
       <div style="font-weight:600;margin-bottom:10px">💰 Junk earned this round</div>
-      ${rp.map(p=>{
-        const items=getJunk(RND,p);
-        const total=items.reduce((a,b)=>a+b.val,0);
-        return`<div style="margin-bottom:${p===rp[rp.length-1]?0:10}px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${items.length?5:0}px">
-            <img src="${PHOTOS[p]}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>
-            <span style="font-weight:600;color:${PC[p]};flex:1">${p}</span>
-            <span style="font-size:16px;font-weight:800;color:${total>0?"#4dd68a":"var(--muted)"}">
-              ${total>0?"+$"+total:"—"}
-            </span>
-          </div>
-          ${items.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;padding-left:32px">
-            ${items.map(j=>`<span style="font-size:11px;background:rgba(200,144,26,0.15);color:#C8901A;border-radius:6px;padding:2px 8px">${j.label} H${j.h+1} +$${j.val}</span>`).join("")}
-          </div>`:`<div style="padding-left:32px;font-size:12px;color:var(--muted)">No junk yet</div>`}
-        </div>`;
-      }).join("")}
+      ${(()=>{
+        const teams=ROUND_TEAMS[RND];
+        const jm=junkMoney(RND);
+        function playerJunkRow(p){
+          const items=getJunk(RND,p);
+          const net=jm[p]||0;
+          const netCol=net>0?"#4dd68a":net<0?"#f07060":"var(--muted)";
+          return`<div style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <img src="${PHOTOS[p]}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>
+              <span style="font-weight:600;color:${PC[p]};flex:1">${p}</span>
+              <span style="font-size:15px;font-weight:800;color:${netCol}">${net>=0?"+":""}\$${net.toFixed(0)}</span>
+            </div>
+            ${items.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;padding-left:32px;margin-top:4px">
+              ${items.map(j=>`<span style="font-size:11px;background:rgba(200,144,26,0.15);color:#C8901A;border-radius:6px;padding:2px 8px">${j.label} H${j.h+1}</span>`).join("")}
+            </div>`:`<div style="padding-left:32px;font-size:12px;color:var(--muted);margin-top:2px">No junk yet</div>`}
+          </div>`;
+        }
+        if(!teams){
+          return rp.map(p=>playerJunkRow(p)).join("");
+        }
+        // Team view
+        return["a","b"].map(side=>{
+          const team=teams[side];
+          const teamItems=team.flatMap(p=>getJunk(RND,p).map(j=>({...j,p})));
+          const teamNet=team.reduce((s,p)=>s+(jm[p]||0),0);
+          const teamCol=teamNet>0?"#4dd68a":teamNet<0?"#f07060":"var(--muted)";
+          const borderCol=side==="a"?"#2B7DD6":"#D44A38";
+          return`<div style="border:0.5px solid ${borderCol}22;border-left:3px solid ${borderCol};border-radius:8px;padding:10px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:${borderCol}">TEAM ${side.toUpperCase()} — ${team.join(" & ")}</div>
+              <div style="font-size:16px;font-weight:800;color:${teamCol}">${teamNet>=0?"+":""}\$${teamNet.toFixed(0)}</div>
+            </div>
+            ${team.map(p=>playerJunkRow(p)).join("")}
+            ${teamItems.length?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${teamItems.length} junk item${teamItems.length>1?"s":""} · each player on other team pays \$${JUNK_VAL}</div>`:""}
+          </div>`;
+        }).join("");
+      })()}
       <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center">
         <span class="muted">Log sandy / greenie / HIO →</span>
         <button onclick="setTab('bets')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600">Open Bets</button>
