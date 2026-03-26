@@ -955,6 +955,9 @@ function buildScores(){
   const par = CDATA[RND].par[HOLE];
   const holeLabel = `Hole ${HOLE+1}`;
   const dist = CDATA[RND].yds[HOLE]||"";
+  const cd = CDATA[RND];
+  const teeSet = S.teeSet?.[RND] || "Blue";
+  const teeData = cd.tees[teeSet] || Object.values(cd.tees)[1];
 
   return `<div id="live-wrap">
     <!-- Running leaderboard strip -->
