@@ -1821,10 +1821,7 @@ function celebrate(icon,text,sub){
   setTimeout(()=>el.classList.remove("show"),3000);
 }
 function checkCelebration(p,v,par){
-  if(!v||!par)return;
-  const d=v-par;
-  if(d<=-2)celebrate("🦅","EAGLE!",`${p} goes ${d===2?"2":"3+"} under par`);
-  else if(d===-1)celebrate("🐦","BIRDIE!",`${p} goes 1 under`);
+  // Disabled — too disruptive during entry
 }
 
 // ── ROUND SUMMARY ─────────────────────────────────────────
