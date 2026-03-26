@@ -532,25 +532,25 @@ function nassauMoney(r){
   const teams=ROUND_TEAMS[r];
   const rp=ROUND_PLAYERS[r]||PLAYERS;
   if(!teams){
-    // R1: 3-player individual — each vs each pair, low score wins each leg
+    // Individual round: each player plays a full Nassau against every other player
+    // Each 1v1 matchup is worth $20 front / $20 back / $40 overall independently
     const result=Object.fromEntries(rp.map(p=>[p,0]));
-    ["front","back","overall"].forEach(leg=>{
-      const start=leg==="back"?9:0, end=leg==="front"?9:18;
-      const amt=leg==="overall"?50:25;
-      const tots=rp.map(p=>({p,t:tot(S.scores[r][p].slice(start,end))}))
-        .filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
-      if(tots.length<2) return;
-      // Each pair: low beats high
-      for(let i=0;i<rp.length;i++){
-        for(let j=i+1;j<rp.length;j++){
-          const pi=tots.find(x=>x.p===rp[i]), pj=tots.find(x=>x.p===rp[j]);
-          if(!pi||!pj)continue;
-          const perMatch=Math.round(amt/(rp.length*(rp.length-1)/2));
-          if(pi.t<pj.t){result[rp[i]]+=perMatch;result[rp[j]]-=perMatch;}
-          else if(pj.t<pi.t){result[rp[j]]+=perMatch;result[rp[i]]-=perMatch;}
-        }
+    for(let i=0;i<rp.length;i++){
+      for(let j=i+1;j<rp.length;j++){
+        const pi=rp[i], pj=rp[j];
+        ["front","back","overall"].forEach(leg=>{
+          const start=leg==="back"?9:0;
+          const end=leg==="front"?9:18;
+          const amt=NASSAU[leg];
+          const si=tot(S.scores[r][pi].slice(start,end));
+          const sj=tot(S.scores[r][pj].slice(start,end));
+          if(si===null||sj===null)return;
+          if(si<sj){result[pi]+=amt;result[pj]-=amt;}
+          else if(sj<si){result[pj]+=amt;result[pi]-=amt;}
+          // tie = push, no money moves
+        });
       }
-    });
+    }
     return result;
   }
   // Team round
