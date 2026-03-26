@@ -1084,7 +1084,7 @@ function buildScores(){
       const d=v?v-parV:null;
       return`<td style="font-weight:700;color:${d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)"}">${v||"—"}</td>`;
     }).join("");
-    return`<tr class="${label==="TOT"?"grand-row":"tot-row'}"><td>${label}/${parV}</td>${cells}</tr>`;
+    return`<tr class="${label==="TOT"?"grand-row":"tot-row"}"><td>${label}/${parV}</td>${cells}</tr>`;
   }
 
   return`<div class="pg">
