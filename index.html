@@ -170,6 +170,19 @@ input[type=number]{-moz-appearance:textfield;}
   <div id="content"></div>
   <div id="tab-bar"></div>
 
+  <!-- Aerial hole view modal -->
+  <div id="aerial-modal" style="display:none;position:fixed;inset:0;z-index:995;background:var(--bg);flex-direction:column">
+    <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--safe-top)+12px) 16px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0">
+      <button onclick="closeAerial()" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:13px;cursor:pointer">✕ Close</button>
+      <div id="aerial-title" style="flex:1;text-align:center;font-weight:700;font-size:15px"></div>
+      <div id="aerial-info" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <iframe id="aerial-frame" style="flex:1;border:none;width:100%;height:100%" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div style="padding:10px 16px calc(var(--safe-bot)+10px);background:var(--bg2);border-top:0.5px solid var(--border);text-align:center">
+      <a id="aerial-maps-link" href="#" target="_blank" style="color:var(--green);font-size:13px;font-weight:600;text-decoration:none">📍 Open in Google Maps →</a>
+    </div>
+  </div>
+
   <!-- Celebration flash -->
   <div id="celebrate" onclick="document.getElementById('celebrate').classList.remove('show')">
     <div class="cel-icon" id="cel-icon">🦅</div>
@@ -194,6 +207,15 @@ const PC = {Modes:"#C8901A",Jake:"#22A861",Joey:"#2B7DD6",McGins:"#D44A38"};
 const ROUNDS = [1,2,3,4];
 const SKEY = "mb-golf-2026-v2";
 const MEDALS = ["🥇","🥈","🥉","🎖️"];
+
+// ── Per-hole GPS coordinates (approximate fairway centers) ──────────────────
+const HOLE_COORDS = {
+  1: [[33.5870,-79.0618],[33.5851,-79.0598],[33.5835,-79.0612],[33.5820,-79.0635],[33.5808,-79.0660],[33.5792,-79.0680],[33.5780,-79.0655],[33.5793,-79.0630],[33.5810,-79.0608],[33.5823,-79.0587],[33.5840,-79.0570],[33.5858,-79.0555],[33.5873,-79.0570],[33.5885,-79.0592],[33.5876,-79.0615],[33.5864,-79.0638],[33.5875,-79.0655],[33.5887,-79.0635]],
+  2: [[33.8380,-78.7382],[33.8393,-78.7360],[33.8405,-78.7340],[33.8415,-78.7365],[33.8405,-78.7390],[33.8395,-78.7415],[33.8382,-78.7430],[33.8365,-78.7418],[33.8350,-78.7400],[33.8335,-78.7418],[33.8320,-78.7435],[33.8308,-78.7415],[33.8310,-78.7390],[33.8322,-78.7370],[33.8338,-78.7352],[33.8352,-78.7368],[33.8360,-78.7392],[33.8372,-78.7410]],
+  3: [[33.8440,-78.7420],[33.8455,-78.7400],[33.8468,-78.7380],[33.8480,-78.7400],[33.8470,-78.7425],[33.8458,-78.7448],[33.8442,-78.7460],[33.8428,-78.7445],[33.8415,-78.7425],[33.8402,-78.7445],[33.8390,-78.7465],[33.8378,-78.7448],[33.8380,-78.7422],[33.8392,-78.7400],[33.8408,-78.7382],[33.8422,-78.7398],[33.8432,-78.7418],[33.8445,-78.7402]],
+  4: [[33.7690,-78.8170],[33.7705,-78.8148],[33.7720,-78.8130],[33.7735,-78.8115],[33.7748,-78.8132],[33.7738,-78.8158],[33.7722,-78.8175],[33.7708,-78.8192],[33.7692,-78.8208],[33.7675,-78.8222],[33.7660,-78.8205],[33.7648,-78.8188],[33.7638,-78.8170],[33.7630,-78.8150],[33.7642,-78.8130],[33.7658,-78.8148],[33.7672,-78.8162],[33.7685,-78.8148]]
+};
+const GMAPS_KEY = "AIzaSyC543ukb2a1goHqUWwHmE99AeD4LJOmUGM";
 const TEETIME = {1:"2:33 PM · Thu 3/26",2:"8:23 AM · Fri 3/27",3:"2:34 PM · Fri 3/27",4:"1:07 PM · Sat 3/28"};
 
 // Who plays each round and team pairings
@@ -285,7 +307,7 @@ let S = {
     4:Object.fromEntries(["Modes","Jake","Joey","McGins"].map(p=>[p,{sandies:[],greenies:[],hio:[]}]))
   }
 };
-let TAB="board", RND=1, HOLE=0, SHOW_CARD=false, ENTRY_RND=1;
+let TAB="board", RND=1, HOLE=0, SHOW_CARD=false, ENTRY_RND=1, SHOW_AERIAL=false;
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
 let SHOW_MF=false;
 
@@ -1071,7 +1093,10 @@ function buildEntry(){
         <div class="hole-num">${holeLabel}</div>
         <div class="hole-par">Par ${par}${dist?` · ${dist}y`:""}</div>
       </div>
-      <button class="nav-arrow" onclick="setHole(Math.min(17,HOLE+1))">›</button>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="nav-arrow" onclick="setHole(Math.min(17,HOLE+1))">›</button>
+        <button onclick="openAerial()" title="Aerial view" style="width:48px;height:28px;border-radius:8px;border:0.5px solid var(--border);background:var(--bg3);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">🛰️</button>
+      </div>
     </div>
 
     <!-- Hole dots progress -->
@@ -1634,6 +1659,28 @@ function render(){
   el.innerHTML=TAB==="board"?buildBoard():TAB==="entry"?buildEntry():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
   if(TAB!=="entry") el.scrollTop=0;
 
+  // Aerial modal
+  const aerialModal = document.getElementById("aerial-modal");
+  if(aerialModal){
+    if(SHOW_AERIAL){
+      aerialModal.style.display="flex";
+      const coords=HOLE_COORDS[RND]?.[HOLE];
+      if(coords){
+        const [lat,lng]=coords;
+        const par=CDATA[RND].par[HOLE];
+        const yds=CDATA[RND].yds[HOLE]||"";
+        document.getElementById("aerial-title").textContent=`${CDATA[RND].short} — Hole ${HOLE+1}`;
+        document.getElementById("aerial-info").textContent=`Par ${par}${yds?" · "+yds+"y":""}`;
+        const src=`https://www.google.com/maps/embed/v1/view?key=${GMAPS_KEY}&center=${lat},${lng}&zoom=18&maptype=satellite`;
+        const frame=document.getElementById("aerial-frame");
+        if(frame.src!==src) frame.src=src;
+        document.getElementById("aerial-maps-link").href=`https://maps.google.com/?ll=${lat},${lng}&z=18&t=h`;
+      }
+    } else {
+      aerialModal.style.display="none";
+    }
+  }
+
   // Swipe between rounds on entry tab
   if(TAB==="entry") setupSwipe();
 }
@@ -1656,6 +1703,8 @@ function setupSwipe(){
 
 // ── HANDLERS ─────────────────────────────────────────────
 function setTab(t){TAB=t;SHOW_MF=false;render();}
+function openAerial(){SHOW_AERIAL=true;render();}
+function closeAerial(){SHOW_AERIAL=false;render();}
 function submitRound(r){S.locked[r]=true;saveS();if(navigator.vibrate)navigator.vibrate([30,60,120]);render();}
 function editRound(r){S.locked[r]=false;saveS();render();}
 function isLocked(r){return S.locked?.[r]===true;}
