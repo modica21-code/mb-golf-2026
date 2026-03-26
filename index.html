@@ -284,7 +284,7 @@ let S = {
     4:Object.fromEntries(["Modes","Jake","Joey","McGins"].map(p=>[p,{sandies:[],greenies:[],hio:[]}]))
   }
 };
-let TAB="board", RND=1, HOLE=0, SHOW_CARD=false;
+let TAB="board", RND=1, HOLE=0, SHOW_CARD=false, ENTRY_RND=1;
 let MF={round:1,fmt:"Match Play",t1:[],t2:[],winner:"",notes:""};
 let SHOW_MF=false;
 
@@ -1018,8 +1018,6 @@ function buildScores(){
   const holeLabel = `Hole ${HOLE+1}`;
   const dist = CDATA[RND].yds[HOLE]||"";
   const cd = CDATA[RND];
-  const teeSet = S.teeSet?.[RND] || "Blue";
-  const teeData = cd.tees[teeSet] || Object.values(cd.tees)[1];
 
   return `<div id="live-wrap">
     <!-- Running leaderboard strip -->
@@ -1033,18 +1031,10 @@ function buildScores(){
     <!-- Team match bar (shown when teams playing) -->
     <div id="match-bar" style="display:none;padding:8px 14px;background:var(--bg2);border-bottom:0.5px solid var(--border);flex-shrink:0"></div>
 
-    <!-- Course info + tee selector -->
-    <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-        <div style="font-size:13px;font-weight:600">${cd.name}</div>
-        <div style="font-size:12px;color:var(--muted)">${teeData.y.toLocaleString()}y · ${teeData.r}/${teeData.s}</div>
-      </div>
-      <div style="display:flex;gap:5px;margin-bottom:7px">
-        ${Object.keys(cd.tees).map(t=>`<button class="pill-btn${teeSet===t?" active":""}" style="font-size:11px;padding:4px 9px" onclick="setTee(${RND},'${t}')">${t}</button>`).join("")}
-      </div>
-      <div style="display:flex;gap:4px">
-        ${PLAYERS.map(p=>{const hi=HI[p];const ch=hi!=null?Math.round(hi*teeData.s/113):null;return`<div style="flex:1;text-align:center;background:var(--bg3);border-radius:7px;padding:5px 2px"><div style="font-size:9px;color:${PC[p]};font-weight:600">${p}</div><div style="font-size:13px;font-weight:700">${ch!=null?ch:"—"}</div></div>`;}).join("")}
-      </div>
+    <!-- Minimal course line -->
+    <div style="padding:6px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;font-weight:600;color:var(--text)">${cd.short}</span>
+      <span style="font-size:11px;color:var(--muted)">${TEETIME[RND]}</span>
     </div>
 
     <!-- Hole navigation -->
@@ -1067,6 +1057,96 @@ function buildScores(){
     </div>
 
     ${SHOW_CARD ? `<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0">${buildScoreCard()}</div>` : `<div id="player-rows">${buildPlayerRows()}</div>`}
+  </div>`;
+}
+
+// ── SCORES (scorecard table view) ───────────────────────────
+function buildScores(){
+  const cd=CDATA[RND];
+  const teeSet=S.teeSet?.[RND]||"Blue";
+  const teeData=cd.tees[teeSet]||Object.values(cd.tees)[1];
+  const pars=CDATA[RND].par;
+  const sc=S.scores[RND];
+  const rp=ROUND_PLAYERS[RND]||PLAYERS;
+
+  function cell(h){
+    return rp.map(p=>{
+      const v=sc[p][h];
+      const strk=strokesOnHole(p,RND,h);
+      const dot=strk?`<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#C8901A;margin-left:1px;vertical-align:middle"></span>`:"";
+      return`<td style="color:${scoreClass(v,pars[h])};font-weight:600;font-size:13px">${v||"·"}${dot}</td>`;
+    }).join("");
+  }
+  function totRow(label,start,end){
+    const parV=pSum(pars,start,end);
+    const cells=rp.map(p=>{
+      const v=tot(sc[p].slice(start,end));
+      const d=v?v-parV:null;
+      return`<td style="font-weight:700;color:${d===null?"var(--muted)":d<0?"#4dd68a":d>0?"#f07060":"var(--text)"}">${v||"—"}</td>`;
+    }).join("");
+    return`<tr class="${label==="TOT"?"grand-row":"tot-row'}"><td>${label}/${parV}</td>${cells}</tr>`;
+  }
+
+  return`<div class="pg">
+    <!-- Round selector -->
+    <div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap">
+      ${ROUNDS.map(r=>`<button class="pill-btn${RND===r?" active":""}" onclick="setRnd(${r});render()">R${r} · ${CDATA[r].short}</button>`).join("")}
+    </div>
+
+    <!-- Course header -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <div style="font-weight:600">${cd.name}</div>
+          <div class="muted">${cd.designer}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:600">${teeData.y.toLocaleString()} yds</div>
+          <div class="muted">${teeSet} · ${teeData.r}/${teeData.s}</div>
+        </div>
+      </div>
+      <!-- Tee selector -->
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${Object.keys(cd.tees).map(t=>`<button class="pill-btn${teeSet===t?" active":""}" style="font-size:11px;padding:4px 10px" onclick="setTee(${RND},'${t}')">${t}</button>`).join("")}
+      </div>
+    </div>
+
+    <!-- Scorecard table -->
+    <div style="overflow-x:auto;border-radius:10px;border:0.5px solid var(--border)">
+      <table class="score-table">
+        <thead><tr>
+          <th>H</th>
+          ${rp.map(p=>`<th><div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <img src="${PHOTOS[p]}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/>
+            <span style="color:${PC[p]};font-size:10px">${p[0]}</span>
+          </div></th>`).join("")}
+        </tr></thead>
+        <tbody>
+          ${Array.from({length:9},(_,h)=>`<tr>
+            <td>${h+1}<sup style="font-size:8px;color:var(--muted)"> p${pars[h]}</sup></td>${cell(h)}
+          </tr>`).join("")}
+          ${totRow("OUT",0,9)}
+          ${Array.from({length:9},(_,h)=>`<tr>
+            <td>${h+10}<sup style="font-size:8px;color:var(--muted)"> p${pars[h+9]}</sup></td>${cell(h+9)}
+          </tr>`).join("")}
+          ${totRow("IN",9,18)}
+          ${totRow("TOT",0,18)}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--muted)">● = stroke received on hole</div>
+
+    <!-- Course handicaps -->
+    <div class="card" style="margin-top:12px">
+      <div class="lbl">Course handicaps (${teeSet} tees · slope ${teeData.s})</div>
+      <div style="display:flex;gap:6px">
+        ${rp.map(p=>{const hi=HI[p];const ch=hi!=null?Math.round(hi*teeData.s/113):null;return`<div style="flex:1;text-align:center;background:var(--bg3);border-radius:7px;padding:8px 4px">
+          <img src="${PHOTOS[p]}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]};margin-bottom:3px"/>
+          <div style="font-size:10px;color:${PC[p]};font-weight:600">${p}</div>
+          <div style="font-size:16px;font-weight:800">${ch!=null?ch:"—"}</div>
+        </div>`;}).join("")}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1353,14 +1433,14 @@ function buildGlory(){
 // ── RENDER ────────────────────────────────────────────────
 function render(){
   document.getElementById("header-dots").innerHTML=PLAYERS.map(p=>`<img src="${PHOTOS[p]}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid ${PC[p]}"/>`).join("");
-  const tabs=[["board","⛳","Board"],["scores","📋","Scores"],["skins","💰","Skins"],["bets","🎰","Bets"],["glory","🥇","Glory"]];
+  const tabs=[["board","🏠","Board"],["entry","✏️","Entry"],["scores","📋","Scores"],["skins","💰","Skins"],["bets","💵","Bets"],["glory","🥇","Glory"]];
   document.getElementById("tab-bar").innerHTML=tabs.map(([id,ic,lb])=>`<button class="tab-btn${TAB===id?" active":""}" onclick="setTab('${id}')">${ic}<span>${lb}</span></button>`).join("");
   const el = document.getElementById("content");
-  el.innerHTML=TAB==="board"?buildBoard():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
-  if(TAB!=="scores") el.scrollTop=0;
+  el.innerHTML=TAB==="board"?buildBoard():TAB==="entry"?buildEntry():TAB==="scores"?buildScores():TAB==="skins"?buildSkins():TAB==="bets"?buildBets():buildGlory();
+  if(TAB!=="entry") el.scrollTop=0;
 
-  // Swipe between rounds on scores tab
-  if(TAB==="scores") setupSwipe();
+  // Swipe between rounds on entry tab
+  if(TAB==="entry") setupSwipe();
 }
 
 // ── SWIPE ─────────────────────────────────────────────────
