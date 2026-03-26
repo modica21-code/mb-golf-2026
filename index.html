@@ -759,21 +759,28 @@ function buildBoard(){
       return{p, totalStrokes, totalPar, holesPlayed, diff:totalStrokes-totalPar, roundsPlayed};
     }).filter(x=>x.roundsPlayed>0).sort((a,b)=>a.diff-b.diff||a.totalStrokes-b.totalStrokes);
 
-    // Net: gross minus cumulative course handicap strokes per round
+    // Net: score vs par for holes played, minus prorated handicap strokes
     const netData = PLAYERS.map(p=>{
-      let netTotal=0, roundsPlayed=0;
+      let netVsPar=0, holesPlayed=0, roundsPlayed=0;
       ROUNDS.forEach(r=>{
         if(!(ROUND_PLAYERS[r]||PLAYERS).includes(p)) return;
-        const t=tot(S.scores[r][p]); if(!t) return;
+        const scores=S.scores[r][p];
+        const pars=CDATA[r].par;
         const tee=S.teeSet?.[r]||"Blue";
         const slope=CDATA[r].tees[tee]?.s||113;
         const hi=HI[p]; if(hi===null||hi===undefined) return;
-        const ch=Math.round(hi*slope/113);
-        netTotal+=(t-ch);
+        const ch=Math.round(hi*slope/113); // full round handicap
+        let rStrokes=0, rPar=0, rHoles=0;
+        scores.forEach((s,h)=>{const n=ps(s);if(n){rStrokes+=n;rPar+=pars[h];rHoles++;}});
+        if(rHoles===0) return;
+        // Prorate handicap to holes played
+        const proratedHdcp=Math.round(ch*(rHoles/18));
+        netVsPar+=(rStrokes-proratedHdcp)-rPar;
+        holesPlayed+=rHoles;
         roundsPlayed++;
       });
-      return{p, netTotal, roundsPlayed};
-    }).filter(x=>x.roundsPlayed>0).sort((a,b)=>a.netTotal-b.netTotal);
+      return{p, netVsPar, holesPlayed, roundsPlayed};
+    }).filter(x=>x.roundsPlayed>0).sort((a,b)=>a.netVsPar-b.netVsPar);
 
     if(grossData.length===0) return"";
 
@@ -802,21 +809,25 @@ function buildBoard(){
       </div>`;
     }).join("")}`;
 
+    const netLeader2=netData[0];
     const netSection=netData.length===0?"":
     `<div class="stitle" style="margin-top:12px">Net leaderboard</div>
     ${netData.map((s,i)=>{
-      const behind=i>0?s.netTotal-netLeader.netTotal:0;
+      const d=s.netVsPar;
+      const dStr=d===0?"E":d>0?"+"+d:""+d;
+      const dCol=d<0?"#4dd68a":d>0?"#f07060":"var(--text)";
+      const behind=i>0?s.netVsPar-netLeader2.netVsPar:0;
       return`<div class="row-card" style="border-left:3px solid ${PC[s.p]}">
         <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]}</span>
         ${av(s.p,"md")}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
-          <div class="muted" style="margin-top:2px">Index ${HI[s.p]!==null?HI[s.p]:"—"}</div>
+          <div class="muted" style="margin-top:2px">Hdcp ${HI[s.p]!==null?HI[s.p]:"—"} · thru ${s.holesPlayed}</div>
           ${i>0?`<div style="font-size:11px;color:#f07060;margin-top:2px">+${behind} back</div>`:""}
         </div>
         <div style="text-align:right">
-          <div style="font-size:32px;font-weight:800;color:var(--text)">${s.netTotal}</div>
-          <div class="muted" style="font-size:11px">net strokes</div>
+          <div style="font-size:32px;font-weight:800;color:${dCol}">${dStr}</div>
+          <div class="muted" style="font-size:11px">net vs par</div>
         </div>
       </div>`;
     }).join("")}`;
@@ -824,20 +835,6 @@ function buildBoard(){
     return grossSection+netSection;
   })()}
 
-  <!-- Net standings -->
-  ${anyNet?`<div class="stitle" style="margin-top:12px">Net leaderboard</div>
-  ${ns.filter(x=>x.played>0).map((s,i)=>`<div class="row-card">
-    <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]||"·"}</span>
-    ${av(s.p,"lg")}
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
-      <div class="muted" style="margin-top:2px">${s.nets.map((n,ri)=>`R${ri+1}: ${n}`).join(" · ")}</div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-size:26px;font-weight:800;color:${PC[s.p]}">${s.total}</div>
-      <div class="muted" style="font-size:11px">net · ${s.played}R</div>
-    </div>
-  </div>`).join("")}`:""}
 
   <!-- Round results -->
   <div class="stitle" style="margin-top:12px">Round results</div>
