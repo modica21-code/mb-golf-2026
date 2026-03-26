@@ -1896,18 +1896,16 @@ function closeRoundSummary(){
 }
 
 function checkAutoAdvance(){
+  // Auto-advance disabled — player taps the arrow manually
+  // Still trigger round complete celebration when hole 18 is done
   if(SHOW_CARD)return;
   const rp=ROUND_PLAYERS[RND]||PLAYERS;
   const allDone=rp.every(p=>ps(S.scores[RND][p][HOLE])!==null);
-  if(allDone&&HOLE<17){
-    setTimeout(()=>{HOLE++;render();if(navigator.vibrate)navigator.vibrate([20,50,20]);},600);
-  } else if(allDone&&HOLE===17){
-    // Round complete — show summary but DON'T advance hole or reset state
+  if(allDone&&HOLE===17){
     setTimeout(()=>{
       if(navigator.vibrate)navigator.vibrate([50,100,50,100,200]);
       showRoundSummary(RND);
     },800);
-    return; // explicitly don't touch HOLE
   }
 }
 
