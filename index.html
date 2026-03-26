@@ -1091,9 +1091,13 @@ function buildScores(){
   function cell(h){
     return rp.map(p=>{
       const v=sc[p][h];
+      const n=ps(v);
       const strk=strokesOnHole(p,RND,h);
-      const dot=strk?`<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#C8901A;margin-left:1px;vertical-align:middle"></span>`:"";
-      return`<td style="color:${scoreClass(v,pars[h])};font-weight:600;font-size:13px">${v||"·"}${dot}</td>`;
+      // Only show stroke dot if a score has been entered
+      const dot=(strk&&n)?`<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#C8901A;margin-left:1px;vertical-align:middle"></span>`:"";
+      // Only show stroke hint (small dot) on empty cells for context
+      const hint=(!n&&strk)?`<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:rgba(200,144,26,0.35);margin-left:1px;vertical-align:middle"></span>`:"";
+      return`<td style="color:${scoreClass(v,pars[h])};font-weight:600;font-size:13px">${n||`<span style="color:var(--border2)">·</span>`}${dot}${hint}</td>`;
     }).join("");
   }
   function totRow(label,start,end){
