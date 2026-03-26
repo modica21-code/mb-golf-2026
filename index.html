@@ -698,22 +698,84 @@ function buildBoard(){
   ${matchBanners?`<div class="stitle">Live match status</div>${matchBanners}`:""}
 
   <!-- Trip leaderboard -->
-  <div class="stitle" style="margin-top:4px">Trip points</div>
-  ${st.map((s,i)=>{
-    const barW=st[0].total>0?Math.round(s.total/st[0].total*100):0;
-    return`<div class="row-card" style="border-left:3px solid ${PC[s.p]}">
-      <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]}</span>
-      ${av(s.p,"lg")}
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
-        <div style="margin-top:5px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
-          <div style="height:4px;background:${PC[s.p]};border-radius:2px;width:${barW}%;transition:width 0.4s"></div>
+  ${(()=>{
+    // Gross: total strokes vs total par across all rounds played
+    const grossData = PLAYERS.map(p=>{
+      let totalStrokes=0, totalPar=0, roundsPlayed=0;
+      ROUNDS.forEach(r=>{
+        if(!(ROUND_PLAYERS[r]||PLAYERS).includes(p)) return;
+        const t=tot(S.scores[r][p]); if(!t) return;
+        totalStrokes+=t;
+        totalPar+=pSum(CDATA[r].par);
+        roundsPlayed++;
+      });
+      return{p, totalStrokes, totalPar, diff:totalStrokes-totalPar, roundsPlayed};
+    }).filter(x=>x.roundsPlayed>0).sort((a,b)=>a.diff-b.diff||a.totalStrokes-b.totalStrokes);
+
+    // Net: gross minus cumulative course handicap strokes per round
+    const netData = PLAYERS.map(p=>{
+      let netTotal=0, roundsPlayed=0;
+      ROUNDS.forEach(r=>{
+        if(!(ROUND_PLAYERS[r]||PLAYERS).includes(p)) return;
+        const t=tot(S.scores[r][p]); if(!t) return;
+        const tee=S.teeSet?.[r]||"Blue";
+        const slope=CDATA[r].tees[tee]?.s||113;
+        const hi=HI[p]; if(hi===null||hi===undefined) return;
+        const ch=Math.round(hi*slope/113);
+        netTotal+=(t-ch);
+        roundsPlayed++;
+      });
+      return{p, netTotal, roundsPlayed};
+    }).filter(x=>x.roundsPlayed>0).sort((a,b)=>a.netTotal-b.netTotal);
+
+    if(grossData.length===0) return"";
+
+    const leader=grossData[0];
+    const netLeader=netData[0];
+
+    const grossSection=`
+    <div class="stitle" style="margin-top:4px">Gross leaderboard</div>
+    ${grossData.map((s,i)=>{
+      const d=s.diff;
+      const dStr=d===0?"E":d>0?"+"+d:""+d;
+      const dCol=d<0?"#4dd68a":d>0?"#f07060":"var(--text)";
+      const behind=i>0?s.diff-leader.diff:0;
+      return`<div class="row-card" style="border-left:3px solid ${PC[s.p]}">
+        <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]}</span>
+        ${av(s.p,"lg")}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
+          <div class="muted" style="margin-top:2px">${s.totalStrokes} strokes · ${s.roundsPlayed}R played</div>
+          ${i>0?`<div style="font-size:11px;color:#f07060;margin-top:2px">+${behind} back</div>`:""}
         </div>
-        <div class="muted" style="margin-top:4px;font-size:11px">${s.rp}pt stroke · ${s.sk} skins · ${s.ctp} CTP · ${s.ld} LD</div>
-      </div>
-      <div style="font-size:32px;font-weight:800;color:${PC[s.p]};min-width:36px;text-align:right">${s.total}</div>
-    </div>`;
-  }).join("")}
+        <div style="text-align:right">
+          <div style="font-size:32px;font-weight:800;color:${dCol}">${dStr}</div>
+          <div class="muted" style="font-size:11px">vs par</div>
+        </div>
+      </div>`;
+    }).join("")}`;
+
+    const netSection=netData.length===0?"":
+    `<div class="stitle" style="margin-top:12px">Net leaderboard</div>
+    ${netData.map((s,i)=>{
+      const behind=i>0?s.netTotal-netLeader.netTotal:0;
+      return`<div class="row-card" style="border-left:3px solid ${PC[s.p]}">
+        <span style="font-size:20px;width:22px;text-align:center">${MEDALS[i]}</span>
+        ${av(s.p,"md")}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:${PC[s.p]};font-size:15px">${s.p}</div>
+          <div class="muted" style="margin-top:2px">Index ${HI[s.p]!==null?HI[s.p]:"—"}</div>
+          ${i>0?`<div style="font-size:11px;color:#f07060;margin-top:2px">+${behind} back</div>`:""}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:32px;font-weight:800;color:var(--text)">${s.netTotal}</div>
+          <div class="muted" style="font-size:11px">net strokes</div>
+        </div>
+      </div>`;
+    }).join("")}`;
+
+    return grossSection+netSection;
+  })()}
 
   <!-- Net standings -->
   ${anyNet?`<div class="stitle" style="margin-top:12px">Net leaderboard</div>
