@@ -453,12 +453,25 @@ function runTot(r,p,upTo){
 // ── Calculations ─────────────────────────────────────────
 function calcSkins(r){
   const rp=ROUND_PLAYERS[r]||PLAYERS;
-  let carry=0;const wins=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  const pars=CDATA[r].par;
+  let carry=0;
+  const wins=Object.fromEntries(PLAYERS.map(p=>[p,0]));
   for(let h=0;h<18;h++){
-    const vs=rp.map(p=>ps(S.scores[r][p]?.[h]));
-    if(vs.some(v=>v===null))continue;
-    const mn=Math.min(...vs);const w=rp.filter((_,i)=>vs[i]===mn);
-    if(w.length===1){wins[w[0]]+=1+carry;carry=0;}else carry++;
+    const scores=rp.map(p=>ps(S.scores[r][p]?.[h]));
+    // Skip hole if any player missing a score
+    if(scores.some(v=>v===null))continue;
+    // Net score = gross - strokes received on this hole
+    const netScores=rp.map((p,i)=>scores[i]-strokesOnHole(p,r,h));
+    const par=pars[h];
+    // A skin requires a net birdie or better (net <= par - 1)
+    const birdies=rp.filter((_,i)=>netScores[i]<=par-1);
+    if(birdies.length===1){
+      // Sole net birdie — wins all carried skins
+      wins[birdies[0]]+=1+carry;carry=0;
+    } else {
+      // No net birdie, or tied net birdies — carry over
+      carry++;
+    }
   }
   return{wins,carry};
 }
@@ -1377,10 +1390,14 @@ function buildSkins(){
     if(!any)return`<div class="card" style="opacity:0.5"><span style="font-weight:600">Round ${r}</span> <span class="muted">— ${COURSES[r]} · Not started</span></div>`;
     let c2=0;const hd=[];
     for(let h=0;h<18;h++){
-      const vs=rp.map(p=>ps(S.scores[r][p]?.[h]));
-      if(vs.some(v=>v===null)){hd.push({h,skip:true});continue;}
-      const mn=Math.min(...vs);const w=rp.filter((_,i)=>vs[i]===mn);
-      if(w.length===1){hd.push({h,w:w[0],sk:1+c2});c2=0;}else{hd.push({h,tie:true});c2++;}
+      const scores=rp.map(p=>ps(S.scores[r][p]?.[h]));
+      if(scores.some(v=>v===null)){hd.push({h,skip:true});continue;}
+      const par=CDATA[r].par[h];
+      const nets=rp.map((p,i)=>scores[i]-strokesOnHole(p,r,h));
+      const birdies=rp.filter((_,i)=>nets[i]<=par-1);
+      if(birdies.length===1){hd.push({h,w:birdies[0],sk:1+c2,net:nets[rp.indexOf(birdies[0])]});c2=0;}
+      else if(birdies.length>1){hd.push({h,tie:true,reason:"tied birdie"});c2++;}
+      else{hd.push({h,tie:false,nobid:true});c2++;}
     }
     return`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
