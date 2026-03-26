@@ -1365,14 +1365,15 @@ function buildSkins(){
     </div>`).join("")}
   </div>`;
   const rounds=ROUNDS.map(r=>{
+    const rp=ROUND_PLAYERS[r]||PLAYERS;
     const {wins,carry}=calcSkins(r);
-    const any=PLAYERS.some(p=>S.scores[r][p].some(s=>ps(s)!==null));
+    const any=rp.some(p=>S.scores[r][p].some(s=>ps(s)!==null));
     if(!any)return`<div class="card" style="opacity:0.5"><span style="font-weight:600">Round ${r}</span> <span class="muted">— ${COURSES[r]} · Not started</span></div>`;
     let c2=0;const hd=[];
     for(let h=0;h<18;h++){
-      const vs=PLAYERS.map(p=>ps(S.scores[r][p]?.[h]));
+      const vs=rp.map(p=>ps(S.scores[r][p]?.[h]));
       if(vs.some(v=>v===null)){hd.push({h,skip:true});continue;}
-      const mn=Math.min(...vs);const w=PLAYERS.filter((_,i)=>vs[i]===mn);
+      const mn=Math.min(...vs);const w=rp.filter((_,i)=>vs[i]===mn);
       if(w.length===1){hd.push({h,w:w[0],sk:1+c2});c2=0;}else{hd.push({h,tie:true});c2++;}
     }
     return`<div class="card">
@@ -1380,7 +1381,7 @@ function buildSkins(){
         <span style="font-weight:600">Round ${r}</span><span class="muted">${COURSES[r]}</span>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        ${PLAYERS.map(p=>`<div style="flex:1;text-align:center;opacity:${wins[p]>0?1:0.3}">
+        ${rp.map(p=>`<div style="flex:1;text-align:center;opacity:${wins[p]>0?1:0.3}">
           <img src="${PHOTOS[p]}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid ${PC[p]}"/><br/>
           <div style="font-size:22px;font-weight:800;color:${wins[p]>0?PC[p]:"var(--muted)"}">${wins[p]}</div>
         </div>`).join("")}
