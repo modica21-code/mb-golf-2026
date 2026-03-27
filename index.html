@@ -533,21 +533,33 @@ function nassauMoney(r){
   const rp=ROUND_PLAYERS[r]||PLAYERS;
   if(!teams){
     // Individual round: each player plays a full Nassau against every other player
-    // Each 1v1 matchup is worth $20 front / $20 back / $40 overall independently
+    // Net scores — gross minus prorated course handicap per 9/18 holes
     const result=Object.fromEntries(rp.map(p=>[p,0]));
+    const tee=S.teeSet?.[r]||"Blue";
+    const slope=CDATA[r].tees[tee]?.s||113;
+    // Course handicap for each player
+    const ch=Object.fromEntries(rp.map(p=>{
+      const hi=HI[p]; return [p, hi!=null?Math.round(hi*slope/113):0];
+    }));
     for(let i=0;i<rp.length;i++){
       for(let j=i+1;j<rp.length;j++){
         const pi=rp[i], pj=rp[j];
         ["front","back","overall"].forEach(leg=>{
           const start=leg==="back"?9:0;
           const end=leg==="front"?9:18;
+          const holes=end-start;
           const amt=NASSAU[leg];
-          const si=tot(S.scores[r][pi].slice(start,end));
-          const sj=tot(S.scores[r][pj].slice(start,end));
-          if(si===null||sj===null)return;
+          const rawI=tot(S.scores[r][pi].slice(start,end));
+          const rawJ=tot(S.scores[r][pj].slice(start,end));
+          if(rawI===null||rawJ===null)return;
+          // Prorate handicap to 9 or 18 holes
+          const hdcpI=Math.round(ch[pi]*(holes/18));
+          const hdcpJ=Math.round(ch[pj]*(holes/18));
+          const si=rawI-hdcpI;
+          const sj=rawJ-hdcpJ;
           if(si<sj){result[pi]+=amt;result[pj]-=amt;}
           else if(sj<si){result[pj]+=amt;result[pi]-=amt;}
-          // tie = push, no money moves
+          // tie = push
         });
       }
     }
