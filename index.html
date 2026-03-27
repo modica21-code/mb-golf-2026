@@ -532,35 +532,53 @@ function nassauMoney(r){
   const teams=ROUND_TEAMS[r];
   const rp=ROUND_PLAYERS[r]||PLAYERS;
   if(!teams){
-    // Individual round: each player plays a full Nassau against every other player
-    // Net scores — gross minus prorated course handicap per 9/18 holes
+    // Individual Nassau: net match play, hole by hole
+    // Each 1v1 uses HANDICAP DIFFERENTIAL — higher hdcp player gets the difference in strokes
     const result=Object.fromEntries(rp.map(p=>[p,0]));
     const tee=S.teeSet?.[r]||"Blue";
     const slope=CDATA[r].tees[tee]?.s||113;
-    // Course handicap for each player
+    const hdcpIdx=CDATA[r].hdcp; // hole handicap indices
+    // Full course handicap per player
     const ch=Object.fromEntries(rp.map(p=>{
       const hi=HI[p]; return [p, hi!=null?Math.round(hi*slope/113):0];
     }));
+
+    // Returns 1 if player gets a stroke on this hole in a 1v1 matchup (differential)
+    function strokeDiff(p1,p2,h){
+      const diff=Math.abs(ch[p1]-ch[p2]);
+      const higherHdcp=ch[p1]>=ch[p2]?p1:p2;
+      if(p1!==higherHdcp) return 0; // p1 is lower hdcp, no strokes
+      // p1 gets strokes: receives stroke on holes where hdcpIdx[h] <= diff
+      return hdcpIdx[h]<=diff?1:0;
+    }
+
     for(let i=0;i<rp.length;i++){
       for(let j=i+1;j<rp.length;j++){
         const pi=rp[i], pj=rp[j];
-        ["front","back","overall"].forEach(leg=>{
-          const start=leg==="back"?9:0;
-          const end=leg==="front"?9:18;
-          const holes=end-start;
-          const amt=NASSAU[leg];
-          const rawI=tot(S.scores[r][pi].slice(start,end));
-          const rawJ=tot(S.scores[r][pj].slice(start,end));
-          if(rawI===null||rawJ===null)return;
-          // Prorate handicap to 9 or 18 holes
-          const hdcpI=Math.round(ch[pi]*(holes/18));
-          const hdcpJ=Math.round(ch[pj]*(holes/18));
-          const si=rawI-hdcpI;
-          const sj=rawJ-hdcpJ;
-          if(si<sj){result[pi]+=amt;result[pj]-=amt;}
-          else if(sj<si){result[pj]+=amt;result[pi]-=amt;}
-          // tie = push
-        });
+        // Track holes won for each leg
+        let frontI=0,frontJ=0,backI=0,backJ=0,totI=0,totJ=0;
+        for(let h=0;h<18;h++){
+          const gi=ps(S.scores[r][pi]?.[h]);
+          const gj=ps(S.scores[r][pj]?.[h]);
+          if(gi===null||gj===null)continue;
+          const ni=gi-strokeDiff(pi,pj,h);
+          const nj=gj-strokeDiff(pj,pi,h);
+          // Who wins the hole?
+          let wi=0,wj=0;
+          if(ni<nj)wi=1; else if(nj<ni)wj=1;
+          if(h<9){frontI+=wi;frontJ+=wj;}
+          else{backI+=wi;backJ+=wj;}
+          totI+=wi;totJ+=wj;
+        }
+        // Front 9
+        if(frontI>frontJ){result[pi]+=NASSAU.front;result[pj]-=NASSAU.front;}
+        else if(frontJ>frontI){result[pj]+=NASSAU.front;result[pi]-=NASSAU.front;}
+        // Back 9
+        if(backI>backJ){result[pi]+=NASSAU.back;result[pj]-=NASSAU.back;}
+        else if(backJ>backI){result[pj]+=NASSAU.back;result[pi]-=NASSAU.back;}
+        // Overall
+        if(totI>totJ){result[pi]+=NASSAU.overall;result[pj]-=NASSAU.overall;}
+        else if(totJ>totI){result[pj]+=NASSAU.overall;result[pi]-=NASSAU.overall;}
       }
     }
     return result;
