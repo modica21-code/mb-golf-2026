@@ -411,21 +411,51 @@ function seedMatches(){
   ];
 }
 
+// Round 2 front 9 seed data
+const R2_SEED = {
+  Modes:  [5,4,4,4,7,5,5,4,5,"","","","","","","","",""],
+  Joey:   [6,5,4,5,5,4,6,6,6,"","","","","","","","",""],
+  McGins: [3,4,4,4,6,5,4,5,4,"","","","","","","","",""],
+  Jake:   [5,7,4,5,6,5,7,6,6,"","","","","","","","",""]
+};
+
+function applyR2Seed(data){
+  if(!data.scores) data.scores={};
+  if(!data.scores["2"]) data.scores["2"]={};
+  let changed=false;
+  for(const p of Object.keys(R2_SEED)){
+    if(!data.scores["2"][p]) data.scores["2"][p]=Array(18).fill("");
+    R2_SEED[p].forEach((sc,i)=>{
+      if(sc!==""&&(data.scores["2"][p][i]===""||data.scores["2"][p][i]==null)){
+        data.scores["2"][p][i]=sc; changed=true;
+      }
+    });
+  }
+  return changed;
+}
+
 async function initFirebase(){
   try{
     const remote = await fbGet();
-    if(remote&&remote.scores){
-      S.scores=remote.scores;
-      if(remote.sb) S.sb=remote.sb;
-      if(remote.matches) S.matches=remote.matches;
-      if(remote.teeSet) S.teeSet=remote.teeSet;
-      if(remote.ts) FB_LAST_TS=remote.ts;
-      ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
-      try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}
-    } else {
-      seedMatches();
-      saveS();
+    const data = remote||{};
+    // Merge R2 seed if any slots are missing
+    const seeded = applyR2Seed(data);
+    S.scores=data.scores||S.scores;
+    if(data.sb) S.sb=data.sb;
+    if(data.matches) S.matches=data.matches;
+    if(data.teeSet) S.teeSet=data.teeSet;
+    if(data.ts) FB_LAST_TS=data.ts;
+    ROUNDS.forEach(r=>{S.pars[r]=[...CDATA[r].par];});
+    try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(e){}
+    // Push back if we seeded anything
+    if(seeded){
+      await fetch(FB_URL+"/trip.json",{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(data)
+      });
     }
+    if(!remote||!remote.scores) seedMatches();
     render();
     updateSyncBadge("live");
   }catch(e){
