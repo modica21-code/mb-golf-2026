@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push Round 2 Scores</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+  h2 { color: #4dd68a; margin-bottom: 4px; }
+  p { color: #999; font-size: 14px; margin-bottom: 24px; text-align: center; }
+  table { border-collapse: collapse; margin-bottom: 24px; font-size: 14px; }
+  th, td { border: 1px solid #333; padding: 6px 10px; text-align: center; }
+  th { background: #222; color: #4dd68a; }
+  tr:nth-child(even) td { background: #1a1a1a; }
+  button { background: #4dd68a; color: #111; border: none; border-radius: 12px; padding: 16px 40px; font-size: 18px; font-weight: 700; cursor: pointer; }
+  button:disabled { background: #333; color: #666; cursor: default; }
+  #status { margin-top: 16px; font-size: 15px; color: #4dd68a; text-align: center; }
+</style>
+</head>
+<body>
+<h2>⛳ MB Golf 2026</h2>
+<p>Round 2 — Barefoot Dye · Front 9</p>
+<table>
+  <tr><th>Hole</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th></tr>
+  <tr><td>Par</td><td>4</td><td>4</td><td>3</td><td>4</td><td>5</td><td>3</td><td>4</td><td>5</td><td>4</td></tr>
+  <tr><td>Modes</td><td>5</td><td>4</td><td>4</td><td>4</td><td>7</td><td>5</td><td>5</td><td>4</td><td>5</td></tr>
+  <tr><td>Joey</td><td>6</td><td>5</td><td>4</td><td>5</td><td>5</td><td>4</td><td>6</td><td>6</td><td>6</td></tr>
+  <tr><td>McGins</td><td>3</td><td>4</td><td>4</td><td>4</td><td>6</td><td>5</td><td>4</td><td>5</td><td>4</td></tr>
+  <tr><td>Jake</td><td>5</td><td>7</td><td>4</td><td>5</td><td>6</td><td>5</td><td>7</td><td>6</td><td>6</td></tr>
+</table>
+<button id="btn" onclick="pushScores()">Push to Firebase</button>
+<div id="status"></div>
+
+<script>
+const FB_URL = "https://mb-golf-2026-default-rtdb.firebaseio.com";
+
+const round2Front9 = {
+  Modes:  [5,4,4,4,7,5,5,4,5,"","","","","","","","",""],
+  Joey:   [6,5,4,5,5,4,6,6,6,"","","","","","","","",""],
+  McGins: [3,4,4,4,6,5,4,5,4,"","","","","","","","",""],
+  Jake:   [5,7,4,5,6,5,7,6,6,"","","","","","","","",""]
+};
+
+async function pushScores() {
+  const btn = document.getElementById('btn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = 'Fetching current data…';
+  try {
+    const res = await fetch(FB_URL + "/trip.json");
+    let data = await res.json();
+    if (!data) data = {};
+    if (!data.scores) data.scores = {};
+    if (!data.scores["2"]) data.scores["2"] = {};
+    for (const player of Object.keys(round2Front9)) {
+      if (!data.scores["2"][player]) data.scores["2"][player] = Array(18).fill("");
+      round2Front9[player].forEach((score, i) => {
+        if (score !== "" && data.scores["2"][player][i] === "") {
+          data.scores["2"][player][i] = score;
+        }
+      });
+    }
+    status.textContent = 'Pushing scores…';
+    const put = await fetch(FB_URL + "/trip.json", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (put.ok) {
+      status.innerHTML = '✅ Done! Check the app.';
+      btn.textContent = '✓ Pushed';
+    } else {
+      throw new Error("PUT failed: " + put.status);
+    }
+  } catch(e) {
+    status.innerHTML = '❌ Error: ' + e.message;
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
