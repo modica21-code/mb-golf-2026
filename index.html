@@ -125,6 +125,18 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .row { display:flex; gap:10px; }
 .row > * { flex:1; }
 
+/* Bottom nav bar */
+body { padding-bottom:calc(74px + env(safe-area-inset-bottom,0)) !important; }
+.bnav { position:fixed; left:0; right:0; bottom:0; background:var(--bg); border-top:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr 1.2fr 1fr; z-index:100; padding-bottom:env(safe-area-inset-bottom,0); box-shadow:0 -4px 14px rgba(0,0,0,.4); }
+.bnav-btn { background:transparent; border:none; color:var(--muted); padding:10px 4px 8px; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; font-family:inherit; transition:color .1s; }
+.bnav-btn .bn-ic { font-size:19px; line-height:1; }
+.bnav-btn .bn-lbl { font-size:10px; font-weight:600; letter-spacing:.3px; }
+.bnav-btn.act { color:var(--text); }
+.bnav-btn:active { background:var(--bg2); }
+.bnav-btn.bnav-score { background:var(--t1); color:var(--bg); border-radius:0; margin:6px 4px; padding:8px 4px; border-radius:10px; }
+.bnav-btn.bnav-score.act { background:var(--t1d); }
+.bnav-btn.bnav-score .bn-lbl { font-weight:700; }
+
 /* Hole-by-hole scoring view */
 .sc-mode-toggle { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:3px; margin-bottom:12px; }
 .sc-mode-toggle button { flex:1; padding:8px 10px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; text-transform:uppercase; letter-spacing:.5px; }
@@ -328,7 +340,42 @@ function render() {
   else if (S.view === 'player') html = renderPlayer();
   else if (S.view === 'setup')  html = renderSetup();
   else html = renderHome();
-  app.innerHTML = html;
+  app.innerHTML = html + renderBottomNav();
+}
+function renderBottomNav() {
+  const atHome = S.view === 'home';
+  const atScore = S.view === 'group';
+  const atAdmin = S.view === 'setup';
+  const atRounds = atHome && S.subTab === 'standings';
+  const atPlayers = atHome && S.subTab === 'players';
+
+  // Score button target: last group > first active round > first round
+  let scoreHandler = `pickScoreTarget()`;
+  if (S._lastGroup) {
+    scoreHandler = `go('group',{rId:'${S._lastGroup.rId}',gIdx:${S._lastGroup.gIdx}})`;
+  }
+
+  return `<div class="bnav">
+    <button class="bnav-btn ${atRounds?'act':''}" onclick="go('home',{subTab:'standings'})">
+      <span class="bn-ic">🏆</span><span class="bn-lbl">Rounds</span>
+    </button>
+    <button class="bnav-btn ${atPlayers?'act':''}" onclick="go('home',{subTab:'players'})">
+      <span class="bn-ic">👥</span><span class="bn-lbl">Players</span>
+    </button>
+    <button class="bnav-btn bnav-score ${atScore?'act':''}" onclick="${scoreHandler}">
+      <span class="bn-ic">✏️</span><span class="bn-lbl">Score</span>
+    </button>
+    <button class="bnav-btn ${atAdmin?'act':''}" onclick="go('setup')">
+      <span class="bn-ic">⚙️</span><span class="bn-lbl">Admin</span>
+    </button>
+  </div>`;
+}
+function pickScoreTarget() {
+  // Find first active round, else first upcoming, else round 1
+  let target = ROUNDS.find(r => roundStatus(r.id) === 'active')
+            || ROUNDS.find(r => roundStatus(r.id) === 'upcoming')
+            || ROUNDS[0];
+  go('round', {rId: target.id});
 }
 function topbar(backTo, title) {
   let back = '';
@@ -375,7 +422,6 @@ function renderHome() {
   h += `<div class="tabs">
     <button class="tab ${S.subTab==='standings'?'active':''}" onclick="go('home',{subTab:'standings'})">Rounds</button>
     <button class="tab ${S.subTab==='players'?'active':''}" onclick="go('home',{subTab:'players'})">Players</button>
-    <button class="tab" onclick="go('setup')">Admin</button>
   </div>`;
   if (S.subTab === 'standings') h += renderRoundList();
   else if (S.subTab === 'players') h += renderAllPlayersList();
