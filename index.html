@@ -328,7 +328,7 @@ function renderAllPlayersList() {
       if (holes >= 18) { totalDiff += diff; roundsPlayed++; }
     });
     return {...p, totalDiff, roundsPlayed, q:quotaFor(p.id)};
-  }).sort((a,b) => b.totalDiff - a.totalDiff);
+  }).sort((a,b) => (b.totalDiff - a.totalDiff) || (b.q - a.q));
   let h = `<div class="sec-h"><span>Individual Leaderboard</span></div>`;
   h += `<div class="lb">
     <div class="lb-hd"><span></span><span>Player</span><span class="q">Quota</span><span class="sc">Trip</span></div>`;
@@ -345,11 +345,11 @@ function renderAllPlayersList() {
   h += `<div class="row">
     <div class="card" style="flex:1;">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;letter-spacing:.6px;margin-bottom:8px;"><span class="dot t1"></span>Team 1</div>
-      ${PLAYERS.filter(p=>p.t===1).map(p=>`<div style="font-size:13px;padding:4px 0;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);"><span>${esc(p.name)}</span><span style="color:var(--dim);">${p.hi.toFixed(1)}</span></div>`).join('')}
+      ${PLAYERS.filter(p=>p.t===1).slice().sort((a,b)=>quotaFor(b.id)-quotaFor(a.id)).map(p=>`<div style="font-size:13px;padding:4px 0;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);"><span>${esc(p.name)}</span><span style="color:var(--dim);">Q${quotaFor(p.id)} · ${p.hi.toFixed(1)}</span></div>`).join('')}
     </div>
     <div class="card" style="flex:1;">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;letter-spacing:.6px;margin-bottom:8px;"><span class="dot t2"></span>Team 2</div>
-      ${PLAYERS.filter(p=>p.t===2).map(p=>`<div style="font-size:13px;padding:4px 0;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);"><span>${esc(p.name)}</span><span style="color:var(--dim);">${p.hi.toFixed(1)}</span></div>`).join('')}
+      ${PLAYERS.filter(p=>p.t===2).slice().sort((a,b)=>quotaFor(b.id)-quotaFor(a.id)).map(p=>`<div style="font-size:13px;padding:4px 0;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);"><span>${esc(p.name)}</span><span style="color:var(--dim);">Q${quotaFor(p.id)} · ${p.hi.toFixed(1)}</span></div>`).join('')}
     </div>
   </div>`;
   return h;
