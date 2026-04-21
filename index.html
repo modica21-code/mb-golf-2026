@@ -125,6 +125,18 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .row { display:flex; gap:10px; }
 .row > * { flex:1; }
 
+/* Round / Group switcher on score page */
+.gsw-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:600; letter-spacing:.6px; margin:8px 4px 6px; }
+.gsw { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:10px; padding-bottom:4px; }
+.gsw::-webkit-scrollbar { display:none; }
+.gsw-btn { flex-shrink:0; background:var(--card); border:1px solid var(--border); color:var(--text); padding:7px 12px; border-radius:10px; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-width:68px; }
+.gsw-btn .gsw-n { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.4px; }
+.gsw-btn .gsw-s { font-size:11px; color:var(--dim); white-space:nowrap; }
+.gsw-btn.act { background:var(--t1); border-color:var(--t1); }
+.gsw-btn.act .gsw-n { color:var(--bg); }
+.gsw-btn.act .gsw-s { color:rgba(10,14,26,.7); }
+.gsw-btn:active { transform:scale(.97); }
+
 /* Bottom nav bar */
 body { padding-bottom:calc(74px + env(safe-area-inset-bottom,0)) !important; }
 .bnav { position:fixed; left:0; right:0; bottom:0; background:var(--bg); border-top:1px solid var(--border); display:grid; grid-template-columns:1fr 1fr 1.2fr 1fr; z-index:100; padding-bottom:env(safe-area-inset-bottom,0); box-shadow:0 -4px 14px rgba(0,0,0,.4); }
@@ -548,6 +560,29 @@ function renderGroup() {
   const pars = parsFor(r.id);
   const locked = !!S.locks[r.id];
   let h = topbar({v:'round', o:{rId:r.id}}, `${esc(r.short)} · G${S.gIdx+1}`);
+
+  // Round switcher
+  h += `<div class="gsw-lbl">Round</div><div class="gsw">`;
+  ROUNDS.forEach(rr => {
+    h += `<button class="gsw-btn ${rr.id===r.id?'act':''}" onclick="switchScoreRound('${rr.id}')">
+      <span class="gsw-n">R${rr.id.replace('r','')}</span>
+      <span class="gsw-s">${esc(rr.short)}</span>
+    </button>`;
+  });
+  h += `</div>`;
+
+  // Group switcher
+  h += `<div class="gsw-lbl">Group</div><div class="gsw gsw-grp">`;
+  r.groups.forEach((g, idx) => {
+    const nms = g.map(pid => PMAP[pid] && PMAP[pid].name).filter(Boolean);
+    const short = nms.map(n => n.slice(0,3)).join('/');
+    h += `<button class="gsw-btn ${idx===S.gIdx?'act':''}" onclick="go('group',{rId:'${r.id}',gIdx:${idx}})">
+      <span class="gsw-n">G${idx+1}</span>
+      <span class="gsw-s">${esc(short)}</span>
+    </button>`;
+  });
+  h += `</div>`;
+
   if (locked) h += `<div class="note" style="text-align:center;">🔒 Round is locked. Unlock in Admin to edit scores.</div>`;
   h += `<div class="sc-mode-toggle">
     <button class="${S.scMode==='hole'?'active':''}" onclick="setScMode('hole')">Hole by Hole</button>
@@ -556,6 +591,11 @@ function renderGroup() {
   if (S.scMode === 'hole') h += renderGroupHoleMode(r, group, pars);
   else h += renderGroupCardMode(r, group, pars);
   return h;
+}
+
+function switchScoreRound(rId) {
+  // Switch round and land on group 1 of that round
+  go('group', {rId: rId, gIdx: 0});
 }
 
 function renderGroupHoleMode(r, group, pars) {
