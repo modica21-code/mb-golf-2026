@@ -124,6 +124,52 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .dot.t2 { background:var(--t2); }
 .row { display:flex; gap:10px; }
 .row > * { flex:1; }
+
+/* Hole-by-hole scoring view */
+.sc-mode-toggle { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:3px; margin-bottom:12px; }
+.sc-mode-toggle button { flex:1; padding:8px 10px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; text-transform:uppercase; letter-spacing:.5px; }
+.sc-mode-toggle button.active { background:var(--card2); color:var(--text); box-shadow:var(--shadow); }
+
+.hs-hdr { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; text-align:center; }
+.hs-hdr .hnum { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; font-weight:700; }
+.hs-hdr .hpar { font-size:40px; font-weight:800; line-height:1.05; margin-top:2px; font-variant-numeric:tabular-nums; }
+.hs-hdr .hlbl { font-size:11px; color:var(--dim); margin-top:3px; text-transform:uppercase; letter-spacing:.7px; }
+
+.hs-strip { display:flex; gap:3px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:6px 0; margin-bottom:12px; }
+.hs-strip .hcell { flex-shrink:0; min-width:30px; padding:6px 2px; text-align:center; background:var(--bg2); border:1px solid var(--border); border-radius:6px; font-size:11px; font-variant-numeric:tabular-nums; cursor:pointer; color:var(--muted); }
+.hs-strip .hcell.act { background:var(--warn); color:var(--bg); border-color:var(--warn); font-weight:700; }
+.hs-strip .hcell.has { background:var(--card2); color:var(--text); }
+.hs-strip .hcell .num { font-size:9px; color:var(--dim); display:block; }
+.hs-strip .hcell.act .num { color:var(--bg); }
+
+.hs-plr { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:8px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; }
+.hs-plr .hs-nm { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.hs-plr .hs-nm .n { font-size:15px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.hs-plr .hs-nm .m { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; }
+.hs-plr .hs-step { display:flex; align-items:center; gap:4px; }
+.hs-plr .hs-step button { width:40px; height:40px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:18px; font-weight:700; cursor:pointer; font-family:inherit; }
+.hs-plr .hs-step button:active { background:var(--card2); }
+.hs-plr .hs-step .hs-val { min-width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; background:var(--bg2); border:2px solid var(--border); }
+.hs-plr .hs-step .hs-val.empty { color:var(--dim); border-style:dashed; }
+.hs-plr .hs-step .hs-val.eagle { background:rgba(251,191,36,.2); color:var(--warn); border-color:var(--warn); }
+.hs-plr .hs-step .hs-val.birdie { background:rgba(74,222,128,.15); color:var(--good); border-color:var(--good); }
+.hs-plr .hs-step .hs-val.par { color:var(--text); border-color:var(--text); }
+.hs-plr .hs-step .hs-val.bogey { color:var(--muted); }
+.hs-plr .hs-step .hs-val.bad { color:var(--bad); }
+
+.hs-nav { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+.hs-nav button { padding:14px; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+.hs-nav button:active { background:var(--bg2); }
+.hs-nav button.next { background:var(--t1); color:var(--bg); border-color:var(--t1); }
+.hs-nav button:disabled { opacity:.3; }
+.hs-quota-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:12px; margin-top:12px; }
+.hs-quota-strip.g2 { grid-template-columns:repeat(2, 1fr); }
+.hs-quota-strip .qq { text-align:center; padding:6px; background:var(--bg2); border-radius:8px; }
+.hs-quota-strip .qq .qn { font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-bottom:2px; }
+.hs-quota-strip .qq .qg { font-size:13px; font-variant-numeric:tabular-nums; margin-top:2px; }
+.hs-quota-strip .qq .qg.pos { color:var(--good); }
+.hs-quota-strip .qq .qg.neg { color:var(--bad); }
+.hs-quota-strip .qq .qd { font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -188,7 +234,9 @@ async function syncFromFB() {
   S.locks = d.locks || {};
   render();
 }
-let S = { view:'home', rId:null, gIdx:null, pId:null, scores:{}, pars:{}, chcp:{}, locks:{}, subTab:'standings' };
+let S = { view:'home', rId:null, gIdx:null, pId:null, scores:{}, pars:{}, chcp:{}, locks:{}, subTab:'standings', scHole:0, scMode:'hole' };
+try { const lg = JSON.parse(localStorage.getItem('mbq.lastGroup')||'null'); if (lg && lg.rId) { S._lastGroup = lg; } } catch(e){}
+try { const m = localStorage.getItem('mbq.scMode'); if (m==='card'||m==='hole') S.scMode = m; } catch(e){}
 function courseHcp(pId) { if (S.chcp[pId] != null) return S.chcp[pId]; return Math.round(PMAP[pId].hi); }
 function quotaFor(pId) { return 36 - courseHcp(pId); }
 function parsFor(rId) { const p = S.pars[rId]; return (p && p.length === 18) ? p : DEFAULT_PAR; }
@@ -238,12 +286,34 @@ function roundStatus(rId) {
 function tripScore(tNum) { let total = 0; ROUNDS.forEach(r => { total += teamRoundScore(tNum, r.id).total; }); return total; }
 function go(view, opts) {
   opts = opts || {};
+  const groupChanged = (opts.rId !== undefined && opts.rId !== S.rId) || (opts.gIdx !== undefined && opts.gIdx !== S.gIdx);
   S.view = view;
   if (opts.rId !== undefined) S.rId = opts.rId;
   if (opts.gIdx !== undefined) S.gIdx = opts.gIdx;
   if (opts.pId !== undefined) S.pId = opts.pId;
   if (opts.subTab !== undefined) S.subTab = opts.subTab;
+  if (view === 'group') {
+    try { localStorage.setItem('mbq.lastGroup', JSON.stringify({rId:S.rId, gIdx:S.gIdx})); } catch(e){}
+    if (groupChanged) S.scHole = firstUnscoredHole(S.rId, S.gIdx);
+  }
   window.scrollTo(0, 0);
+  render();
+}
+function firstUnscoredHole(rId, gIdx) {
+  const r = ROUNDS.find(x => x.id === rId);
+  if (!r) return 0;
+  const g = r.groups[gIdx] || [];
+  for (let i = 0; i < 18; i++) {
+    for (const pid of g) {
+      const sc = (S.scores[rId] || {})[pid] || [];
+      if (!parseInt(sc[i])) return i;
+    }
+  }
+  return 0;
+}
+function setScMode(m) {
+  S.scMode = m;
+  try { localStorage.setItem('mbq.scMode', m); } catch(e){}
   render();
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -285,6 +355,23 @@ function renderHome() {
       <div class="sub">7 players</div>
     </div>
   </div>`;
+  if (S._lastGroup) {
+    const lgR = ROUNDS.find(x => x.id === S._lastGroup.rId);
+    if (lgR && lgR.groups[S._lastGroup.gIdx]) {
+      const lgG = lgR.groups[S._lastGroup.gIdx];
+      const nms = lgG.map(pid => PMAP[pid] && PMAP[pid].name).filter(Boolean).join(', ');
+      h += `<div class="round-card active" onclick="go('group',{rId:'${lgR.id}',gIdx:${S._lastGroup.gIdx}})" style="border:1px solid var(--warn);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.7px;font-weight:700;">▶ Resume Scoring</div>
+            <div style="font-size:14px;font-weight:600;margin-top:3px;">${esc(lgR.short)} · Group ${S._lastGroup.gIdx+1}</div>
+            <div style="font-size:11px;color:var(--dim);margin-top:2px;">${esc(nms)}</div>
+          </div>
+          <span style="font-size:20px;">→</span>
+        </div>
+      </div>`;
+    }
+  }
   h += `<div class="tabs">
     <button class="tab ${S.subTab==='standings'?'active':''}" onclick="go('home',{subTab:'standings'})">Rounds</button>
     <button class="tab ${S.subTab==='players'?'active':''}" onclick="go('home',{subTab:'players'})">Players</button>
@@ -413,10 +500,106 @@ function renderGroup() {
   const group = r.groups[S.gIdx];
   if (!group) return renderHome();
   const pars = parsFor(r.id);
+  const locked = !!S.locks[r.id];
+  let h = topbar({v:'round', o:{rId:r.id}}, `${esc(r.short)} · G${S.gIdx+1}`);
+  if (locked) h += `<div class="note" style="text-align:center;">🔒 Round is locked. Unlock in Admin to edit scores.</div>`;
+  h += `<div class="sc-mode-toggle">
+    <button class="${S.scMode==='hole'?'active':''}" onclick="setScMode('hole')">Hole by Hole</button>
+    <button class="${S.scMode==='card'?'active':''}" onclick="setScMode('card')">Full Scorecard</button>
+  </div>`;
+  if (S.scMode === 'hole') h += renderGroupHoleMode(r, group, pars);
+  else h += renderGroupCardMode(r, group, pars);
+  return h;
+}
+
+function renderGroupHoleMode(r, group, pars) {
+  const i = Math.max(0, Math.min(17, S.scHole|0));
+  const par = pars[i];
+
+  // Hole strip
+  let strip = `<div class="hs-strip">`;
+  for (let k = 0; k < 18; k++) {
+    let hasAny = false;
+    for (const pid of group) {
+      const sc = (S.scores[r.id]||{})[pid] || [];
+      if (parseInt(sc[k])) { hasAny = true; break; }
+    }
+    const cls = k===i ? 'act' : (hasAny ? 'has' : '');
+    strip += `<div class="hcell ${cls}" onclick="gotoHole(${k})">${k+1}<span class="num">p${pars[k]}</span></div>`;
+  }
+  strip += `</div>`;
+
+  // Hole header
+  let h = strip;
+  h += `<div class="hs-hdr">
+    <div class="hnum">Hole ${i+1}</div>
+    <div class="hpar">Par ${par}</div>
+    <div class="hlbl">${par===3?'Short':(par===5?'Long':'Middle')}</div>
+  </div>`;
+
+  // Player rows
+  group.forEach(pid => {
+    const p = PMAP[pid];
+    const sc = (S.scores[r.id]||{})[pid] || [];
+    const v = parseInt(sc[i]) || 0;
+    let vcls = 'empty';
+    if (v > 0) {
+      const d = v - par;
+      if (d <= -2) vcls = 'eagle';
+      else if (d === -1) vcls = 'birdie';
+      else if (d === 0) vcls = 'par';
+      else if (d === 1) vcls = 'bogey';
+      else vcls = 'bad';
+    }
+    // running totals thru this hole
+    let rt = 0, rp = 0, rh = 0;
+    for (let k = 0; k <= i; k++) {
+      const sv = parseInt(sc[k]);
+      if (sv) { rt += sv; rp += pars[k]; rh++; }
+    }
+    const {diff, pts, q, holes} = quotaDiffFor(pid, r.id);
+    const thruTxt = rh > 0 ? `Thru ${rh}: ${rt} (${fmtDiff(rt-rp)}) · ${pts} pts` : 'Not started';
+    h += `<div class="hs-plr">
+      <div class="hs-nm">
+        <div class="n"><span class="dot t${p.t}"></span>${esc(p.name)} <span style="color:var(--dim);font-size:11px;font-weight:400;">Q${q}</span></div>
+        <div class="m">${thruTxt}</div>
+      </div>
+      <div class="hs-step">
+        <button onclick="stepScore('${pid}',${i},-1)">−</button>
+        <div class="hs-val ${vcls}" onclick="showNumPad('${pid}',${i})">${v>0?v:'—'}</div>
+        <button onclick="stepScore('${pid}',${i},1)">+</button>
+      </div>
+    </div>`;
+  });
+
+  // Nav buttons
+  const prevDis = i === 0 ? 'disabled' : '';
+  const nextDis = i === 17 ? 'disabled' : '';
+  h += `<div class="hs-nav">
+    <button ${prevDis} onclick="gotoHole(${i-1})">← Hole ${i}</button>
+    <button class="next" ${nextDis} onclick="gotoHole(${i+1})">Hole ${i+2} →</button>
+  </div>`;
+
+  // Running quota strip
+  h += `<div class="hs-quota-strip ${group.length===2?'g2':''}">`;
+  group.forEach(pid => {
+    const p = PMAP[pid];
+    const {diff, holes, gross, toPar} = quotaDiffFor(pid, r.id);
+    h += `<div class="qq">
+      <div class="qn"><span class="dot t${p.t}"></span>${esc(p.name)}</div>
+      <div class="qg ${diffClass(diff)}">${holes===0?'—':fmtDiff(diff)}</div>
+      <div class="qd">${holes===0?'':gross+' ('+fmtDiff(toPar)+')'}</div>
+    </div>`;
+  });
+  h += `</div>`;
+
+  return h;
+}
+
+function renderGroupCardMode(r, group, pars) {
   const outPar = pars.slice(0,9).reduce((a,b)=>a+b,0);
   const inPar  = pars.slice(9,18).reduce((a,b)=>a+b,0);
-  let h = topbar({v:'round', o:{rId:r.id}}, `${esc(r.short)} · G${S.gIdx+1}`);
-  h += `<div class="sc-wrap"><div class="sc-scroll"><table class="sc-table">
+  let h = `<div class="sc-wrap"><div class="sc-scroll"><table class="sc-table">
     <thead><tr><th class="lbl-col">Hole</th>`;
   for (let i=1;i<=9;i++)  h += `<th>${i}</th>`;
   h += `<th class="tot-col">Out</th>`;
@@ -463,6 +646,38 @@ function renderGroup() {
     <span><b style="color:var(--dim)">0</b>dbl+</span>
   </div>`;
   return h;
+}
+
+function gotoHole(k) {
+  if (k < 0 || k > 17) return;
+  S.scHole = k;
+  window.scrollTo(0, 0);
+  render();
+}
+
+async function stepScore(pid, i, delta) {
+  const rId = S.rId;
+  if (S.locks[rId]) { alert('Round is locked.'); return; }
+  const sc = ((S.scores[rId]||{})[pid]) || new Array(18).fill('');
+  const cur = parseInt(sc[i]) || 0;
+  const par = parsFor(rId)[i];
+  let next;
+  if (cur === 0) next = delta > 0 ? par : par - 1;
+  else next = cur + delta;
+  if (next < 1) next = 1;
+  if (next > 15) next = 15;
+  await setScore(rId, pid, i, next);
+}
+
+async function showNumPad(pid, i) {
+  if (S.locks[S.rId]) { alert('Round is locked.'); return; }
+  const cur = ((S.scores[S.rId]||{})[pid] || [])[i] || '';
+  const v = prompt('Enter score for hole ' + (i+1), cur);
+  if (v === null) return;
+  if (v === '' || v === '0') { await setScore(S.rId, pid, i, ''); return; }
+  const n = parseInt(v);
+  if (!(n >= 1 && n <= 15)) return;
+  await setScore(S.rId, pid, i, n);
 }
 function scCell(rId, pid, i, v, par) {
   const sv = parseInt(v);
