@@ -185,9 +185,10 @@ async function syncFromFB() {
   S.scores = d.scores || {};
   S.pars = d.pars || {};
   S.chcp = d.chcp || {};
+  S.locks = d.locks || {};
   render();
 }
-let S = { view:'home', rId:null, gIdx:null, pId:null, scores:{}, pars:{}, chcp:{}, subTab:'standings' };
+let S = { view:'home', rId:null, gIdx:null, pId:null, scores:{}, pars:{}, chcp:{}, locks:{}, subTab:'standings' };
 function courseHcp(pId) { if (S.chcp[pId] != null) return S.chcp[pId]; return Math.round(PMAP[pId].hi); }
 function quotaFor(pId) { return 36 - courseHcp(pId); }
 function parsFor(rId) { const p = S.pars[rId]; return (p && p.length === 18) ? p : DEFAULT_PAR; }
@@ -203,20 +204,20 @@ function pointsForHole(score, par) {
 }
 function pointsForPlayerRound(pId, rId) {
   const sc = (S.scores[rId] || {})[pId];
-  if (!sc) return {pts:0, holes:0};
+  if (!sc) return {pts:0, holes:0, gross:0, toPar:0};
   const pars = parsFor(rId);
-  let pts = 0, holes = 0;
+  let pts = 0, holes = 0, gross = 0, parSum = 0;
   for (let i = 0; i < 18; i++) {
     const s = parseInt(sc[i]);
-    if (s && s > 0) { pts += pointsForHole(s, pars[i]); holes++; }
+    if (s && s > 0) { pts += pointsForHole(s, pars[i]); holes++; gross += s; parSum += pars[i]; }
   }
-  return {pts, holes};
+  return {pts, holes, gross, toPar: gross - parSum};
 }
 function quotaDiffFor(pId, rId) {
-  const {pts, holes} = pointsForPlayerRound(pId, rId);
+  const r = pointsForPlayerRound(pId, rId);
   const q = quotaFor(pId);
-  if (holes === 0) return {diff:0, pts:0, q, holes:0};
-  return {diff: pts - q, pts, q, holes};
+  if (r.holes === 0) return {diff:0, pts:0, q, holes:0, gross:0, toPar:0};
+  return {diff: r.pts - q, pts:r.pts, q, holes:r.holes, gross:r.gross, toPar:r.toPar};
 }
 function teamRoundScore(tNum, rId) {
   let total = 0, any = false, allFull = true;
@@ -287,7 +288,7 @@ function renderHome() {
   h += `<div class="tabs">
     <button class="tab ${S.subTab==='standings'?'active':''}" onclick="go('home',{subTab:'standings'})">Rounds</button>
     <button class="tab ${S.subTab==='players'?'active':''}" onclick="go('home',{subTab:'players'})">Players</button>
-    <button class="tab" onclick="go('setup')">Setup</button>
+    <button class="tab" onclick="go('setup')">Admin</button>
   </div>`;
   if (S.subTab === 'standings') h += renderRoundList();
   else if (S.subTab === 'players') h += renderAllPlayersList();
@@ -305,7 +306,7 @@ function renderRoundList() {
     h += `<div class="round-card ${st}" onclick="go('round',{rId:'${r.id}'})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
-          <span class="rnum">${i+1}</span><span class="rt">${esc(r.short)}</span>
+          <span class="rnum">${i+1}</span><span class="rt">${S.locks[r.id]?'🔒 ':''}${esc(r.short)}</span>
           <div class="rs">${esc(r.date)} · ${esc(r.time)}</div>
         </div>
         <span class="pill ${pillCls}">${pillTxt}</span>
@@ -322,20 +323,26 @@ function renderRoundList() {
 }
 function renderAllPlayersList() {
   const rows = PLAYERS.map(p => {
-    let totalDiff = 0, roundsPlayed = 0;
+    let totalDiff = 0, roundsPlayed = 0, tGross = 0, tToPar = 0;
     ROUNDS.forEach(r => {
-      const {diff, holes} = quotaDiffFor(p.id, r.id);
-      if (holes >= 18) { totalDiff += diff; roundsPlayed++; }
+      const {diff, holes, gross, toPar} = quotaDiffFor(p.id, r.id);
+      if (holes >= 18) { totalDiff += diff; roundsPlayed++; tGross += gross; tToPar += toPar; }
     });
-    return {...p, totalDiff, roundsPlayed, q:quotaFor(p.id)};
+    return {...p, totalDiff, roundsPlayed, q:quotaFor(p.id), tGross, tToPar};
   }).sort((a,b) => (b.totalDiff - a.totalDiff) || (b.q - a.q));
   let h = `<div class="sec-h"><span>Individual Leaderboard</span></div>`;
   h += `<div class="lb">
     <div class="lb-hd"><span></span><span>Player</span><span class="q">Quota</span><span class="sc">Trip</span></div>`;
   rows.forEach((p, i) => {
+    const grossLine = p.roundsPlayed > 0
+      ? `<div style="font-size:10px;color:var(--dim);margin-top:1px;">${p.tGross} (${fmtDiff(p.tToPar)}) · ${p.roundsPlayed}r</div>`
+      : '';
     h += `<div class="lb-row" onclick="go('player',{pId:'${p.id}'})">
       <span class="rk">${i+1}</span>
-      <span class="nm"><span class="tdot t${p.t}"></span>${esc(p.name)}<span style="color:var(--dim);font-size:11px;margin-left:4px;">${p.hi.toFixed(1)}</span></span>
+      <span class="nm">
+        <div><span class="tdot t${p.t}"></span>${esc(p.name)}<span style="color:var(--dim);font-size:11px;margin-left:4px;">${p.hi.toFixed(1)}</span></div>
+        ${grossLine}
+      </span>
       <span class="q">${p.q}</span>
       <span class="sc ${diffClass(p.totalDiff)}">${p.roundsPlayed>0?fmtDiff(p.totalDiff):'—'}</span>
     </div>`;
@@ -437,11 +444,11 @@ function renderGroup() {
   h += `<div class="sec-h"><span>Quota</span></div><div class="card flat">`;
   group.forEach(pid => {
     const p = PMAP[pid];
-    const {diff, pts, q, holes} = quotaDiffFor(pid, r.id);
+    const {diff, pts, q, holes, gross, toPar} = quotaDiffFor(pid, r.id);
     h += `<div class="qbar">
       <span><span class="dot t${p.t}"></span>${esc(p.name)} <span style="color:var(--dim);font-size:11px;">Q=${q}</span></span>
       <span>
-        <span class="qlbl" style="margin-right:6px;">${holes}h</span>
+        <span class="qlbl" style="margin-right:8px;">${holes===0?holes+'h':gross+' ('+fmtDiff(toPar)+')'}</span>
         <span class="qv">${pts}<span style="color:var(--dim);">/${q}</span></span>
         <span class="qv ${diffClass(diff)}" style="margin-left:10px;min-width:32px;display:inline-block;text-align:right;">${holes===0?'—':fmtDiff(diff)}</span>
       </span>
@@ -471,6 +478,7 @@ function scCell(rId, pid, i, v, par) {
   return `<td class="sc-cell ${cls}"><input class="sc-inp" type="number" inputmode="numeric" min="1" max="15" value="${sv>0?sv:''}" onchange="setScore('${rId}','${pid}',${i},this.value)" onfocus="this.select()"></td>`;
 }
 async function setScore(rId, pid, i, val) {
+  if (S.locks[rId]) { alert('Round is locked. Unlock in Admin to edit.'); return; }
   const v = parseInt(val);
   if (!S.scores[rId]) S.scores[rId] = {};
   if (!S.scores[rId][pid]) S.scores[rId][pid] = new Array(18).fill('');
@@ -489,31 +497,50 @@ function renderPlayer() {
         <div class="pm">${esc(p.full)} · HI ${p.hi.toFixed(1)} · CH ${courseHcp(p.id)} · Quota ${quotaFor(p.id)}</div>
       </div>
     </div>`;
-  let trip = 0;
+  let trip = 0, tripGross = 0, tripToPar = 0, tripRoundsPlayed = 0;
   ROUNDS.forEach(r => {
-    const {diff, pts, q, holes} = quotaDiffFor(p.id, r.id);
-    if (holes > 0) trip += diff;
+    const {diff, pts, q, holes, gross, toPar} = quotaDiffFor(p.id, r.id);
+    if (holes > 0) { trip += diff; tripGross += gross; tripToPar += toPar; tripRoundsPlayed++; }
     const st = holes === 0 ? 'Upcoming' : (holes < 18 ? `${holes} of 18` : 'Final');
+    const grossTxt = holes === 0 ? '' : `<span class="qlbl" style="margin-right:8px;">${gross} (${fmtDiff(toPar)})</span>`;
     h += `<div class="qbar">
       <span>
         <span style="font-size:13px;font-weight:500;">${esc(r.short)}</span>
         <div class="qlbl" style="margin-top:2px;">${st}</div>
       </span>
       <span>
+        ${grossTxt}
         <span class="qlbl">${pts}/${q}</span>
         <span class="qv ${diffClass(diff)}" style="margin-left:12px;font-size:15px;">${holes===0?'—':fmtDiff(diff)}</span>
       </span>
     </div>`;
   });
   h += `<div class="qbar" style="background:var(--bg2);">
-    <span style="font-weight:600;">Trip Total</span>
+    <span style="font-weight:600;">Trip Total${tripRoundsPlayed>0?' <span class="qlbl" style="font-weight:500;">· '+tripGross+' ('+fmtDiff(tripToPar)+')</span>':''}</span>
     <span class="qv ${diffClass(trip)}" style="font-size:18px;">${fmtDiff(trip)}</span>
   </div></div>`;
   return h;
 }
 function renderSetup() {
-  let h = topbar({v:'home', o:{}}, 'Setup');
-  h += `<div class="note">Set par for each hole per course (defaults to generic par 72). Override course handicaps for any player if their playing handicap isn't just their rounded index.</div>`;
+  let h = topbar({v:'home', o:{}}, 'Admin');
+  h += `<div class="note">Lock a round to prevent any edits to scores or pars. Reset a round to wipe all scores for that round.</div>`;
+  h += `<div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Round Controls</div>`;
+  ROUNDS.forEach(r => {
+    const locked = !!S.locks[r.id];
+    const st = roundStatus(r.id);
+    const stLbl = st === 'done' ? 'FINAL' : (st === 'active' ? 'LIVE' : 'Upcoming');
+    h += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:13px;font-weight:600;">${locked?'🔒 ':''}${esc(r.short)}</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:2px;">${esc(r.date)} · ${esc(r.time)} · ${stLbl}</div>
+      </div>
+      <button class="chip" style="background:${locked?'var(--warn)':'var(--bg2)'};color:${locked?'#1a1405':'var(--text)'};border:1px solid var(--border);font-weight:600;padding:6px 10px;" onclick="toggleLock('${r.id}')">${locked?'Unlock':'Lock'}</button>
+      <button class="chip" style="background:var(--bg2);color:var(--bad);border:1px solid var(--border);font-weight:600;padding:6px 10px;" onclick="resetRound('${r.id}')">Reset</button>
+    </div>`;
+  });
+  h += `</div>`;
+  h += `<div class="note" style="margin-top:12px;">Set par for each hole per course (defaults to generic par 72). Override course handicaps for any player if their playing handicap isn't just their rounded index.</div>`;
   ROUNDS.forEach((r) => {
     const pars = parsFor(r.id);
     const total = pars.reduce((a,b)=>a+b,0);
@@ -551,6 +578,7 @@ function renderSetup() {
   return h;
 }
 async function setPar(rId, i, val) {
+  if (S.locks[rId]) { alert('Round is locked. Unlock in Admin to edit.'); return; }
   const v = parseInt(val);
   if (v < 3 || v > 6) return;
   if (!S.pars[rId] || S.pars[rId].length !== 18) S.pars[rId] = [...DEFAULT_PAR];
@@ -563,6 +591,20 @@ async function setChcp(pid, val) {
   if (isNaN(v)) return;
   S.chcp[pid] = v;
   await fbPatch('chcp', {[pid]: v});
+  render();
+}
+async function toggleLock(rId) {
+  const cur = !!S.locks[rId];
+  S.locks[rId] = !cur;
+  await fbPatch('locks', {[rId]: S.locks[rId]});
+  render();
+}
+async function resetRound(rId) {
+  if (S.locks[rId]) { alert('Unlock the round before resetting.'); return; }
+  const r = ROUNDS.find(x => x.id === rId);
+  if (!confirm('Wipe ALL scores for ' + r.short + '? This cannot be undone.')) return;
+  S.scores[rId] = {};
+  await fbPatch('scores', {[rId]: null});
   render();
 }
 async function init() {
