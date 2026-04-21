@@ -167,13 +167,13 @@ const DEFAULT_PAR = [4,4,3,4,5,4,3,4,5,4,4,3,5,4,3,4,4,5];
 const SEED = {};
 const PAR_SEED = {};
 const FB_URL = "https://mb-golf-2026-default-rtdb.firebaseio.com";
-async function fbLoad() { try { const r = await fetch(FB_URL + "/trip.json"); return await r.json(); } catch(e) { return null; } }
-async function fbPut(data) { try { return await fetch(FB_URL + "/trip.json", {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); } catch(e){} }
-async function fbPatch(path, data) { try { return await fetch(FB_URL + "/trip/" + path + ".json", {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); } catch(e){} }
+async function fbLoad() { try { const r = await fetch(FB_URL + "/mbquota.json"); return await r.json(); } catch(e) { return null; } }
+async function fbPut(data) { try { return await fetch(FB_URL + "/mbquota.json", {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); } catch(e){} }
+async function fbPatch(path, data) { try { return await fetch(FB_URL + "/mbquota/" + path + ".json", {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); } catch(e){} }
 function fbSubscribe() {
   if (!window.EventSource) { setInterval(syncFromFB, 8000); return; }
   try {
-    const es = new EventSource(FB_URL + "/trip.json");
+    const es = new EventSource(FB_URL + "/mbquota.json");
     es.addEventListener('put', syncFromFB);
     es.addEventListener('patch', syncFromFB);
     es.onerror = () => { es.close(); setTimeout(fbSubscribe, 3000); };

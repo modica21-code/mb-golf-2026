@@ -4,8 +4,8 @@
   "description": "Myrtle Beach Golf · April 2026 — 14 players, team quota",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1a12",
-  "theme_color": "#0f1a12",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
   "orientation": "portrait",
   "icons": [
     {
