@@ -1156,6 +1156,9 @@ function renderLboard() {
       else if (activeR) thruTxt = `${activeHoles}/18`;
       else if (roundsPlayed > 0) thruTxt = `${roundsPlayed}r done`;
       else thruTxt = '—';
+      // Quota target always populates — if nothing played yet, show full-trip target
+      const perRoundQ = quotaFor(p.id);
+      const tripQTarget = anyHoles ? qTarget : perRoundQ * ROUNDS.length;
       return {
         p, ch,
         gross: anyHoles ? g : null,
@@ -1165,8 +1168,8 @@ function renderLboard() {
         roundsPlayed,
         allDone,
         thru: thruTxt,
-        qPts: anyHoles ? qPts : null,
-        qTarget: anyHoles ? qTarget : null,
+        qPts: anyHoles ? qPts : 0,
+        qTarget: tripQTarget,
         qDiff: anyHoles ? (qPts - qTarget) : null,
         partial: anyHoles && !allDone
       };
@@ -1179,8 +1182,8 @@ function renderLboard() {
         toPar: x.holes > 0 ? x.toPar : null,
         holes: x.holes,
         thru: x.holes === 0 ? '—' : (x.holes >= 18 ? 'F' : `${x.holes}`),
-        qPts: x.holes > 0 ? x.pts : null,
-        qTarget: x.holes > 0 ? x.q : null,
+        qPts: x.holes > 0 ? x.pts : 0,
+        qTarget: x.q,                     // always show target per round
         qDiff: x.holes > 0 ? x.diff : null,
         partial: x.holes > 0 && x.holes < 18
       };
