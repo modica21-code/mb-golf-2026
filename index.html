@@ -226,6 +226,27 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .stat-tbl .st-v.pos { color:var(--good); font-weight:700; }
 .stat-tbl .st-v.neg { color:var(--bad); font-weight:700; }
 
+/* Big leaderboard view */
+.lb-sort { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:3px; margin-bottom:12px; }
+.lb-sort button { flex:1; padding:9px 4px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; text-transform:uppercase; letter-spacing:.4px; }
+.lb-sort button.sel { background:var(--card2); color:var(--text); box-shadow:var(--shadow); }
+.lb2 { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:8px; }
+.lb2-hd { display:grid; grid-template-columns:24px 1.4fr 44px 50px 50px 50px 50px; padding:8px 10px; font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
+.lb2-hd span:nth-child(n+3) { text-align:right; }
+.lb2-row { display:grid; grid-template-columns:24px 1.4fr 44px 50px 50px 50px 50px; align-items:center; padding:11px 10px; border-bottom:1px solid var(--border); cursor:pointer; }
+.lb2-row:last-child { border-bottom:none; }
+.lb2-row:active { background:var(--bg2); }
+.lb2-rk { color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums; }
+.lb2-nm { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; }
+.lb2-nm .tdot { flex-shrink:0; }
+.lb2-nm-i { min-width:0; }
+.lb2-nm-i > div:first-child { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lb2-nm-s { font-size:9px; color:var(--dim); margin-top:1px; }
+.lb2-thru { text-align:right; font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.lb2-v { text-align:right; font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.lb2-v.pos { color:var(--good); }
+.lb2-v.neg { color:var(--bad); }
+
 .dash-best { background:rgba(251,191,36,.06); border:1px solid var(--warn); border-radius:12px; padding:12px 14px; margin-bottom:14px; cursor:pointer; }
 .dash-best:active { transform:scale(.995); }
 
@@ -657,6 +678,7 @@ function render() {
   else if (S.view === 'player') html = renderPlayer();
   else if (S.view === 'setup')  { if (isAdmin()) html = renderSetup(); else html = renderHome(); }
   else if (S.view === 'stat')   html = renderStat();
+  else if (S.view === 'lboard') html = renderLboard();
   else html = renderHome();
   app.innerHTML = html + renderBottomNav();
 }
@@ -690,6 +712,7 @@ function renderBottomNav() {
   const atHome = S.view === 'home';
   const atScore = S.view === 'group';
   const atAdmin = S.view === 'setup';
+  const atLb = S.view === 'lboard';
   const atRounds = atHome && S.subTab === 'standings';
   const atPlayers = atHome && S.subTab === 'players';
   const admin = isAdmin();
@@ -714,15 +737,18 @@ function renderBottomNav() {
       <span class="bn-ic">⚙️</span><span class="bn-lbl">Admin</span>
     </button>` : '';
 
-  return `<div class="bnav" style="grid-template-columns:repeat(${admin?4:3},1fr);">
+  return `<div class="bnav" style="grid-template-columns:repeat(${admin?5:4},1fr);">
     <button class="bnav-btn ${atRounds?'act':''}" onclick="go('home',{subTab:'standings'})">
       <span class="bn-ic">🏠</span><span class="bn-lbl">Home</span>
     </button>
-    <button class="bnav-btn ${atPlayers?'act':''}" onclick="go('home',{subTab:'players'})">
-      <span class="bn-ic">👥</span><span class="bn-lbl">Players</span>
+    <button class="bnav-btn ${atLb?'act':''}" onclick="go('lboard')">
+      <span class="bn-ic">📊</span><span class="bn-lbl">Boards</span>
     </button>
     <button class="bnav-btn bnav-score ${atScore?'act':''}" onclick="${scoreHandler}">
       <span class="bn-ic">✏️</span><span class="bn-lbl">Score</span>
+    </button>
+    <button class="bnav-btn ${atPlayers?'act':''}" onclick="go('home',{subTab:'players'})">
+      <span class="bn-ic">👥</span><span class="bn-lbl">Players</span>
     </button>
     ${adminBtn}
   </div>`;
@@ -825,7 +851,7 @@ function renderHome() {
       const isMine = userPlayerId() && live.groups[gp.gIdx].includes(userPlayerId());
       h += `<div class="dlg ${isMine?'mine':''}">
         <div class="dlg-n">G${gp.gIdx+1}${isMine?' · You':''}</div>
-        <div class="dlg-h">${gp.minH===gp.maxH?gp.minH+'/18':gp.minH+'-'+gp.maxH+'/18'}</div>
+        <div class="dlg-h">${gp.minH===gp.maxH?'Thru '+gp.minH:'Thru '+gp.minH+'-'+gp.maxH}</div>
       </div>`;
     });
     h += `</div>`;
@@ -837,7 +863,7 @@ function renderHome() {
         h += `<div class="dlm">
           <span class="dlm-r">${i+1}</span>
           <span class="dlm-n">${tdot}${esc(ld.p.name)}</span>
-          <span class="dlm-h">${ld.holes}h</span>
+          <span class="dlm-h">Thru ${ld.holes}</span>
           <span class="dlm-d ${cls}">${fmtDiff(ld.diff)}</span>
         </div>`;
       });
@@ -958,6 +984,127 @@ function renderRoundStreak(wins) {
     html += `<div class="${cls}" title="${esc(r.short)}">${txt}</div>`;
   });
   return html;
+}
+
+function renderLboard() {
+  // Sub-tabs: Trip (combined) + each round
+  const scope = S.lbScope || 'trip';
+  const sort = S.lbSort || 'gross';
+
+  let h = topbar(null, 'Leaderboards');
+
+  // Scope selector
+  h += `<div class="stat-tabs">
+    <button class="${scope==='trip'?'sel':''}" onclick="S.lbScope='trip';render()">Trip Total</button>
+    ${ROUNDS.map(r => `<button class="${scope===r.id?'sel':''}" onclick="S.lbScope='${r.id}';render()">${esc(r.short.split(' ').slice(0,2).join(' '))}</button>`).join('')}
+  </div>`;
+
+  // Compute rows for the chosen scope
+  const rows = PLAYERS.map(p => {
+    const ch = courseHcp(p.id);
+    if (scope === 'trip') {
+      let g = 0, n = 0, parTotal = 0, holes = 0, qPts = 0, qDiff = 0, roundsPlayed = 0;
+      ROUNDS.forEach(r => {
+        const x = quotaDiffFor(p.id, r.id);
+        if (x.holes > 0) {
+          g += x.gross; parTotal += x.gross - x.toPar; holes += x.holes; qPts += x.pts;
+        }
+        if (x.holes >= 18) {
+          // Apply full course handicap once for net per completed round
+          n += x.gross - ch;
+          qDiff += x.diff;
+          roundsPlayed++;
+        }
+      });
+      // For trip net of in-progress: only count completed rounds (otherwise net inflates)
+      // Show "incomplete" indicator
+      const allDone = roundsPlayed === ROUNDS.length;
+      return {
+        p, ch,
+        gross: g,
+        net: roundsPlayed > 0 ? n : null,
+        toPar: g - parTotal,
+        holes,
+        roundsPlayed,
+        allDone,
+        thru: roundsPlayed === ROUNDS.length ? 'Final' : (roundsPlayed > 0 ? `${roundsPlayed}r done` : (holes > 0 ? `In R${ROUNDS.findIndex(r=>(S.scores[r.id]||{})[p.id])+1}` : 'Not started')),
+        qPts, qDiff: roundsPlayed > 0 ? qDiff : null
+      };
+    } else {
+      const x = quotaDiffFor(p.id, scope);
+      return {
+        p, ch,
+        gross: x.holes > 0 ? x.gross : null,
+        net: x.holes >= 18 ? x.gross - ch : null,
+        toPar: x.holes > 0 ? x.toPar : null,
+        holes: x.holes,
+        thru: x.holes === 0 ? '—' : (x.holes >= 18 ? 'F' : `${x.holes}`),
+        qPts: x.pts,
+        qDiff: x.holes > 0 ? x.diff : null,
+        partial: x.holes > 0 && x.holes < 18
+      };
+    }
+  });
+
+  // Sort
+  function sortKey(row) {
+    if (sort === 'gross') return row.gross == null ? Infinity : row.gross;
+    if (sort === 'net')   return row.net == null ? Infinity : row.net;
+    if (sort === 'quota') return row.qDiff == null ? -Infinity : -row.qDiff;
+    if (sort === 'topar') return row.toPar == null ? Infinity : row.toPar;
+    return Infinity;
+  }
+  rows.sort((a,b) => sortKey(a) - sortKey(b));
+
+  // Sort tabs
+  h += `<div class="lb-sort">
+    <button class="${sort==='gross'?'sel':''}" onclick="S.lbSort='gross';render()">Gross</button>
+    <button class="${sort==='net'?'sel':''}" onclick="S.lbSort='net';render()">Net</button>
+    <button class="${sort==='topar'?'sel':''}" onclick="S.lbSort='topar';render()">To Par</button>
+    <button class="${sort==='quota'?'sel':''}" onclick="S.lbSort='quota';render()">Quota</button>
+  </div>`;
+
+  // Table
+  h += `<div class="lb2">
+    <div class="lb2-hd">
+      <span></span>
+      <span>Player</span>
+      <span>Thru</span>
+      <span>Gross</span>
+      <span>Net</span>
+      <span>±Par</span>
+      <span>Quota</span>
+    </div>`;
+
+  rows.forEach((row, i) => {
+    const tdot = `<span class="tdot t${row.p.t}"></span>`;
+    const grossTxt = row.gross == null ? '—' : (row.partial ? `<span style="color:var(--muted)">${row.gross}*</span>` : row.gross);
+    const netTxt = row.net == null ? (row.partial || row.holes>0 ? '—' : '—') : row.net;
+    const tpClass = row.toPar == null ? '' : diffClass(row.toPar);
+    const tpTxt = row.toPar == null ? '—' : fmtDiff(row.toPar);
+    const qClass = row.qDiff == null ? '' : diffClass(row.qDiff);
+    const qTxt = row.qDiff == null ? '—' : fmtDiff(row.qDiff);
+    h += `<div class="lb2-row" onclick="go('player',{pId:'${row.p.id}'})">
+      <span class="lb2-rk">${i+1}</span>
+      <span class="lb2-nm">${tdot}<div class="lb2-nm-i"><div>${esc(row.p.name)}</div><div class="lb2-nm-s">CH ${row.ch} · Q${36-row.ch}</div></div></span>
+      <span class="lb2-thru">${row.thru}</span>
+      <span class="lb2-v">${grossTxt}</span>
+      <span class="lb2-v">${netTxt}</span>
+      <span class="lb2-v ${tpClass}">${tpTxt}</span>
+      <span class="lb2-v ${qClass}">${qTxt}</span>
+    </div>`;
+  });
+
+  h += `</div>`;
+
+  // Footer note
+  if (scope === 'trip') {
+    h += `<div class="foot">Net = Gross − Course Handicap (per completed round)<br>Quota differential = points scored vs. quota target<br>* indicates round in progress</div>`;
+  } else {
+    h += `<div class="foot">Showing ${esc(ROUNDS.find(r=>r.id===scope).course)}<br>Net = Gross − Course Handicap (only when round is complete)<br>Tap a player for full breakdown</div>`;
+  }
+
+  return h;
 }
 
 function renderStat() {
