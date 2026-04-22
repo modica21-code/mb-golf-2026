@@ -198,8 +198,33 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 
 .dash-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
 .ds-tile { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 6px; text-align:center; }
+.ds-tile.ds-tap { cursor:pointer; transition:transform .1s; }
+.ds-tile.ds-tap:active { transform:scale(.96); background:var(--bg2); }
 .ds-tile .ds-n { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
 .ds-tile .ds-l { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; margin-top:3px; }
+
+/* Stat detail view */
+.stat-hero { background:var(--card); border:2px solid var(--border); border-radius:16px; padding:20px 16px; text-align:center; margin-bottom:14px; }
+.sh-emoji { font-size:30px; }
+.sh-val { font-size:44px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; margin:8px 0 4px; }
+.sh-ttl { font-size:14px; font-weight:600; letter-spacing:.5px; }
+.sh-d { font-size:11px; color:var(--muted); margin-top:6px; }
+.stat-tabs { display:flex; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; margin-bottom:12px; }
+.stat-tabs::-webkit-scrollbar { display:none; }
+.stat-tabs button { flex-shrink:0; background:var(--card); border:1px solid var(--border); color:var(--muted); padding:7px 12px; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.stat-tabs button.sel { background:var(--t1); color:var(--bg); border-color:var(--t1); }
+.stat-tbl { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.stat-tbl .st-hd { display:grid; grid-template-columns:26px 1fr 60px 70px; padding:8px 12px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
+.stat-tbl .st-hd span:nth-child(3), .stat-tbl .st-hd span:nth-child(4) { text-align:right; }
+.stat-tbl .st-row { display:grid; grid-template-columns:26px 1fr 60px 70px; padding:11px 12px; border-bottom:1px solid var(--border); font-size:14px; cursor:pointer; align-items:center; }
+.stat-tbl .st-row:last-child { border-bottom:none; }
+.stat-tbl .st-row:active { background:var(--bg2); }
+.stat-tbl .st-r { color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; }
+.stat-tbl .st-nm { display:flex; align-items:center; gap:6px; font-weight:600; overflow:hidden; }
+.stat-tbl .st-m { text-align:right; font-variant-numeric:tabular-nums; font-size:15px; }
+.stat-tbl .st-v { text-align:right; font-variant-numeric:tabular-nums; font-size:13px; color:var(--muted); font-weight:500; }
+.stat-tbl .st-v.pos { color:var(--good); font-weight:700; }
+.stat-tbl .st-v.neg { color:var(--bad); font-weight:700; }
 
 .dash-best { background:rgba(251,191,36,.06); border:1px solid var(--warn); border-radius:12px; padding:12px 14px; margin-bottom:14px; cursor:pointer; }
 .dash-best:active { transform:scale(.995); }
@@ -494,7 +519,7 @@ function nextRound() {
   return ROUNDS.find(r => roundStatus(r.id) === 'upcoming');
 }
 function tripBirdiesEagles() {
-  let bd = 0, eg = 0, pars = 0;
+  let bd = 0, eg = 0, pars = 0, bog = 0, dbl = 0, holes = 0, gross = 0, parSum = 0;
   ROUNDS.forEach(r => {
     const ps = parsFor(r.id);
     PLAYERS.forEach(p => {
@@ -505,10 +530,13 @@ function tripBirdiesEagles() {
         if (d <= -2) eg++;
         else if (d === -1) bd++;
         else if (d === 0) pars++;
+        else if (d === 1) bog++;
+        else if (d >= 2) dbl++;
+        holes++; gross += s; parSum += ps[i];
       }
     });
   });
-  return {bd, eg, pars};
+  return {bd, eg, pars, bog, dbl, holes, toPar: gross - parSum};
 }
 function topPerformers(rId, n) {
   // Returns top n players for given round (or full trip if rId === null) by quota diff
@@ -578,6 +606,7 @@ function go(view, opts) {
   if (opts.gIdx !== undefined) S.gIdx = opts.gIdx;
   if (opts.pId !== undefined) S.pId = opts.pId;
   if (opts.subTab !== undefined) S.subTab = opts.subTab;
+  if (opts.statKind !== undefined) S.statKind = opts.statKind;
   if (view === 'group') {
     try { localStorage.setItem('mbq.lastGroup', JSON.stringify({rId:S.rId, gIdx:S.gIdx})); } catch(e){}
     if (groupChanged) S.scHole = firstUnscoredHole(S.rId, S.gIdx);
@@ -614,6 +643,7 @@ function render() {
   else if (S.view === 'group')  html = renderGroup();
   else if (S.view === 'player') html = renderPlayer();
   else if (S.view === 'setup')  { if (isAdmin()) html = renderSetup(); else html = renderHome(); }
+  else if (S.view === 'stat')   html = renderStat();
   else html = renderHome();
   app.innerHTML = html + renderBottomNav();
 }
@@ -860,10 +890,16 @@ function renderHome() {
   const best = bestSingleRound();
   h += `<div class="sec-h"><span>📊 Trip Stats</span></div>`;
   h += `<div class="dash-stats">
-    <div class="ds-tile"><div class="ds-n">${stats.eg}</div><div class="ds-l">Eagles</div></div>
-    <div class="ds-tile"><div class="ds-n">${stats.bd}</div><div class="ds-l">Birdies</div></div>
-    <div class="ds-tile"><div class="ds-n">${stats.pars}</div><div class="ds-l">Pars</div></div>
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'eg'})"><div class="ds-n">${stats.eg}</div><div class="ds-l">Eagles</div></div>
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'bd'})"><div class="ds-n">${stats.bd}</div><div class="ds-l">Birdies</div></div>
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'pars'})"><div class="ds-n">${stats.pars}</div><div class="ds-l">Pars</div></div>
     <div class="ds-tile"><div class="ds-n">${completed}/${ROUNDS.length}</div><div class="ds-l">Rounds</div></div>
+  </div>
+  <div class="dash-stats" style="margin-top:6px;">
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'bog'})"><div class="ds-n">${stats.bog}</div><div class="ds-l">Bogeys</div></div>
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'dbl'})"><div class="ds-n">${stats.dbl}</div><div class="ds-l">Dbl+</div></div>
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'holes'})"><div class="ds-n">${stats.holes}</div><div class="ds-l">Holes</div></div>
+    <div class="ds-tile ds-tap" onclick="go('stat',{statKind:'scoring'})"><div class="ds-n">${stats.holes>0?(stats.toPar>0?'+':'')+stats.toPar:'—'}</div><div class="ds-l">To Par</div></div>
   </div>`;
   if (best) {
     h += `<div class="dash-best" onclick="go('player',{pId:'${best.p.id}'})">
@@ -909,6 +945,107 @@ function renderRoundStreak(wins) {
     html += `<div class="${cls}" title="${esc(r.short)}">${txt}</div>`;
   });
   return html;
+}
+
+function renderStat() {
+  const kind = S.statKind || 'eg';
+  const meta = {
+    eg:      { title:'Eagles',  desc:'Holes played at 2 or more under par', emoji:'🦅', color:'var(--warn)', match:(d)=>d<=-2 },
+    bd:      { title:'Birdies', desc:'Holes played at 1 under par',          emoji:'🐦', color:'var(--good)', match:(d)=>d===-1 },
+    pars:    { title:'Pars',    desc:'Holes played even to par',             emoji:'🎯', color:'var(--text)', match:(d)=>d===0 },
+    bog:     { title:'Bogeys',  desc:'Holes played at 1 over par',           emoji:'🟨', color:'var(--muted)', match:(d)=>d===1 },
+    dbl:     { title:'Doubles or Worse', desc:'Holes played at 2+ over par', emoji:'💥', color:'var(--bad)',  match:(d)=>d>=2 },
+    holes:   { title:'Holes Played', desc:'Total holes with a score entered', emoji:'⛳', color:'var(--text)', match:()=>true },
+    scoring: { title:'To Par',  desc:'Total gross strokes vs. par',          emoji:'📈', color:'var(--text)', match:()=>true },
+  }[kind] || null;
+
+  if (!meta) return renderHome();
+
+  let h = topbar({v:'home', o:{}}, meta.title);
+
+  // Compute per-player tallies
+  const rows = PLAYERS.map(p => {
+    let count = 0, toPar = 0, holes = 0;
+    const perRound = ROUNDS.map(r => {
+      const ps = parsFor(r.id);
+      const sc = (S.scores[r.id]||{})[p.id] || [];
+      let rCount = 0, rTp = 0, rH = 0;
+      for (let i = 0; i < 18; i++) {
+        const s = parseInt(sc[i]); if (!s) continue;
+        const d = s - ps[i];
+        rH++; rTp += d;
+        if (meta.match(d)) rCount++;
+      }
+      count += rCount; toPar += rTp; holes += rH;
+      return { r, count:rCount, toPar:rTp, holes:rH };
+    });
+    return { p, count, toPar, holes, perRound };
+  });
+
+  // Sort: holes view sorts by holes played desc; scoring by toPar asc (best first); others by count desc
+  if (kind === 'holes') rows.sort((a,b) => b.holes - a.holes || quotaFor(b.p.id) - quotaFor(a.p.id));
+  else if (kind === 'scoring') rows.sort((a,b) => (a.holes===0?9999:a.toPar) - (b.holes===0?9999:b.toPar));
+  else rows.sort((a,b) => b.count - a.count || b.holes - a.holes);
+
+  // Header card
+  const totalCount = rows.reduce((s,r) => s + r.count, 0);
+  const totalHoles = rows.reduce((s,r) => s + r.holes, 0);
+  const totalToPar = rows.reduce((s,r) => s + r.toPar, 0);
+  let headerVal = '';
+  if (kind === 'holes') headerVal = totalHoles;
+  else if (kind === 'scoring') headerVal = totalHoles===0?'—':fmtDiff(totalToPar);
+  else headerVal = totalCount;
+
+  h += `<div class="stat-hero" style="border-color:${meta.color};">
+    <div class="sh-emoji">${meta.emoji}</div>
+    <div class="sh-val" style="color:${meta.color};">${headerVal}</div>
+    <div class="sh-ttl">Trip ${esc(meta.title)}</div>
+    <div class="sh-d">${esc(meta.desc)}</div>
+  </div>`;
+
+  // Sub-tabs: All Time | By Round
+  h += `<div class="stat-tabs">
+    <button class="${!S.statRound?'sel':''}" onclick="S.statRound=null;render()">All Rounds</button>
+    ${ROUNDS.map(r => `<button class="${S.statRound===r.id?'sel':''}" onclick="S.statRound='${r.id}';render()">${esc(r.short.split(' ').slice(0,2).join(' '))}</button>`).join('')}
+  </div>`;
+
+  // Filter rows if a specific round is selected
+  let displayRows;
+  if (S.statRound) {
+    displayRows = rows.map(row => {
+      const rd = row.perRound.find(pr => pr.r.id === S.statRound);
+      return { p: row.p, count: rd?rd.count:0, toPar: rd?rd.toPar:0, holes: rd?rd.holes:0 };
+    });
+    if (kind === 'holes') displayRows.sort((a,b) => b.holes - a.holes);
+    else if (kind === 'scoring') displayRows.sort((a,b) => (a.holes===0?9999:a.toPar) - (b.holes===0?9999:b.toPar));
+    else displayRows.sort((a,b) => b.count - a.count || b.holes - a.holes);
+  } else {
+    displayRows = rows;
+  }
+
+  // Table
+  h += `<div class="stat-tbl">
+    <div class="st-hd">
+      <span></span><span>Player</span>
+      <span>${kind==='scoring'?'Holes':(kind==='holes'?'Played':'Count')}</span>
+      <span>${kind==='scoring'?'To Par':(kind==='holes'?'To Par':'Per Rd')}</span>
+    </div>`;
+  displayRows.forEach((row, i) => {
+    let rightVal = '', middleVal = '';
+    if (kind === 'holes') { middleVal = row.holes; rightVal = row.holes>0?fmtDiff(row.toPar):'—'; }
+    else if (kind === 'scoring') { middleVal = row.holes+'h'; rightVal = row.holes>0?fmtDiff(row.toPar):'—'; }
+    else { middleVal = row.count; rightVal = row.holes>0 ? (row.count / (row.holes/18)).toFixed(1) : '—'; }
+    const rCls = kind === 'scoring' ? diffClass(row.toPar) : '';
+    h += `<div class="st-row" onclick="go('player',{pId:'${row.p.id}'})">
+      <span class="st-r">${i+1}</span>
+      <span class="st-nm"><span class="tdot t${row.p.t}"></span>${esc(row.p.name)}<span style="color:var(--dim);font-size:11px;margin-left:6px;">${row.p.hi.toFixed(1)}</span></span>
+      <span class="st-m" style="color:${row.count>0||kind==='holes'||kind==='scoring'?'var(--text)':'var(--dim)'};font-weight:${(row.count>0&&kind!=='holes'&&kind!=='scoring')?'700':'500'};">${middleVal}</span>
+      <span class="st-v ${rCls}">${rightVal}</span>
+    </div>`;
+  });
+  h += `</div>`;
+
+  return h;
 }
 function renderRoundList() {
   let h = `<div class="sec-h"><span>Schedule</span><span style="color:var(--dim);font-weight:500;text-transform:none;">Tap to view</span></div>`;
