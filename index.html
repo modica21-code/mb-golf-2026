@@ -227,26 +227,32 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .stat-tbl .st-v.neg { color:var(--bad); font-weight:700; }
 
 /* Big leaderboard view */
-.lb2 { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:8px; }
-.lb2-hd { display:grid; grid-template-columns:22px 1.3fr 40px 42px 42px 40px 42px 36px 42px; padding:8px 8px; font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:.3px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
-.lb2-hd span:nth-child(n+3) { text-align:right; }
+.lb-mode { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:3px; margin-bottom:12px; }
+.lb-mode button { flex:1; padding:10px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.lb-mode button.sel { background:var(--card2); color:var(--text); box-shadow:var(--shadow); }
+
+.lb3 { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:8px; }
+.lb3-hd { display:grid; grid-template-columns:24px 1.5fr 44px 60px 60px 60px; padding:10px 12px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
+.lb3-hd span:nth-child(n+3) { text-align:right; }
+.lb3-h { cursor:pointer; padding:2px 0; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+.lb3-h:active { opacity:.6; }
+.lb3-h.lb2-h-sel, .lb2-h.lb2-h-sel { color:var(--t1); }
 .lb2-h { cursor:pointer; padding:2px 0; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
 .lb2-h:active { opacity:.6; }
-.lb2-h.lb2-h-sel { color:var(--t1); }
-.lb2-row { display:grid; grid-template-columns:22px 1.3fr 40px 42px 42px 40px 42px 36px 42px; align-items:center; padding:11px 8px; border-bottom:1px solid var(--border); cursor:pointer; }
-.lb2-row:last-child { border-bottom:none; }
-.lb2-row:active { background:var(--bg2); }
-.lb2-rk { color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums; }
-.lb2-nm { display:flex; align-items:center; gap:5px; min-width:0; overflow:hidden; }
-.lb2-nm .tdot { flex-shrink:0; }
-.lb2-nm-i { min-width:0; }
-.lb2-nm-i > div:first-child { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.lb2-nm-s { font-size:9px; color:var(--dim); margin-top:1px; }
-.lb2-thru { text-align:right; font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
-.lb2-v { text-align:right; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
-.lb2-v.lb2-dim { color:var(--dim); font-weight:500; }
-.lb2-v.pos { color:var(--good); }
-.lb2-v.neg { color:var(--bad); }
+.lb3-row { display:grid; grid-template-columns:24px 1.5fr 44px 60px 60px 60px; align-items:center; padding:12px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+.lb3-row:last-child { border-bottom:none; }
+.lb3-row:active { background:var(--bg2); }
+.lb3-rk { color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; }
+.lb3-nm { display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; }
+.lb3-nm .tdot { flex-shrink:0; }
+.lb3-nm-i { min-width:0; }
+.lb3-nm-i > div:first-child { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lb3-nm-s { font-size:10px; color:var(--dim); margin-top:1px; }
+.lb3-thru { text-align:right; font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.lb3-v { text-align:right; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+.lb3-v.lb3-dim { color:var(--dim); font-weight:500; }
+.lb3-v.pos { color:var(--good); }
+.lb3-v.neg { color:var(--bad); }
 
 .dash-best { background:rgba(251,191,36,.06); border:1px solid var(--warn); border-radius:12px; padding:12px 14px; margin-bottom:14px; cursor:pointer; }
 .dash-best:active { transform:scale(.995); }
@@ -1123,60 +1129,95 @@ function renderLboard() {
     if (sort === 'topar')   return row.toPar == null ? Infinity : row.toPar;
     return Infinity;
   }
+  // View mode — Scoring (gross/net/toPar) or Quota (target/pts/diff)
+  const mode = S.lbMode || 'scoring';
+
+  // Default sort per mode
+  if (!S.lbSort) {
+    sort = mode === 'scoring' ? 'topar' : 'quota';
+  } else {
+    // If user switched modes without picking a sort, use the right default
+    if (mode === 'scoring' && !['gross','net','topar'].includes(sort)) sort = 'topar';
+    if (mode === 'quota'   && !['qtarget','qpts','quota'].includes(sort)) sort = 'quota';
+  }
+
   rows.sort((a,b) => sortKey(a) - sortKey(b));
 
+  // Mode toggle
+  h += `<div class="lb-mode">
+    <button class="${mode==='scoring'?'sel':''}" onclick="S.lbMode='scoring';S.lbSort=null;render()">Scoring</button>
+    <button class="${mode==='quota'?'sel':''}" onclick="S.lbMode='quota';S.lbSort=null;render()">Quota</button>
+  </div>`;
+
   // Column header helper with sort icon + onclick
-  function hd(key, label, rightAlign) {
+  function hd(key, label) {
     const isSel = sort === key;
     const arrow = isSel ? ' ↓' : '';
     const cls = isSel ? 'lb2-h-sel' : '';
     return `<span class="lb2-h ${cls}" onclick="S.lbSort='${key}';render()">${label}${arrow}</span>`;
   }
 
-  // Table — tap column headers to sort
-  h += `<div class="lb2">
-    <div class="lb2-hd">
-      <span></span>
-      <span>Player</span>
-      <span>Thru</span>
-      ${hd('gross', 'Gross')}
-      ${hd('net',   'Net')}
-      ${hd('topar', '±Par')}
-      ${hd('qtarget', 'Quota')}
-      ${hd('qpts',    'Pts')}
-      ${hd('quota',   '±Q')}
-    </div>`;
-
-  rows.forEach((row, i) => {
-    const tdot = `<span class="tdot t${row.p.t}"></span>`;
-    const grossTxt = row.gross == null ? '—' : (row.partial ? `<span style="color:var(--muted)">${row.gross}*</span>` : row.gross);
-    const netTxt = row.net == null ? '—' : row.net;
-    const tpClass = row.toPar == null ? '' : diffClass(row.toPar);
-    const tpTxt = row.toPar == null ? '—' : fmtDiff(row.toPar);
-    const qTargetTxt = row.qTarget == null ? '—' : row.qTarget;
-    const qPtsTxt = row.qPts == null ? '—' : row.qPts;
-    const qClass = row.qDiff == null ? '' : diffClass(row.qDiff);
-    const qTxt = row.qDiff == null ? '—' : fmtDiff(row.qDiff);
-    h += `<div class="lb2-row" onclick="go('player',{pId:'${row.p.id}'})">
-      <span class="lb2-rk">${i+1}</span>
-      <span class="lb2-nm">${tdot}<div class="lb2-nm-i"><div>${esc(row.p.name)}</div><div class="lb2-nm-s">CH ${row.ch}</div></div></span>
-      <span class="lb2-thru">${row.thru}</span>
-      <span class="lb2-v">${grossTxt}</span>
-      <span class="lb2-v">${netTxt}</span>
-      <span class="lb2-v ${tpClass}">${tpTxt}</span>
-      <span class="lb2-v lb2-dim">${qTargetTxt}</span>
-      <span class="lb2-v">${qPtsTxt}</span>
-      <span class="lb2-v ${qClass}">${qTxt}</span>
-    </div>`;
-  });
-
-  h += `</div>`;
+  // Table — different columns per mode
+  if (mode === 'scoring') {
+    h += `<div class="lb3">
+      <div class="lb3-hd">
+        <span></span>
+        <span>Player</span>
+        <span>Thru</span>
+        ${hd('gross', 'Gross')}
+        ${hd('net',   'Net')}
+        ${hd('topar', '±Par')}
+      </div>`;
+    rows.forEach((row, i) => {
+      const tdot = `<span class="tdot t${row.p.t}"></span>`;
+      const grossTxt = row.gross == null ? '—' : (row.partial ? `<span style="color:var(--muted)">${row.gross}*</span>` : row.gross);
+      const netTxt = row.net == null ? '—' : row.net;
+      const tpClass = row.toPar == null ? '' : diffClass(row.toPar);
+      const tpTxt = row.toPar == null ? '—' : fmtDiff(row.toPar);
+      h += `<div class="lb3-row" onclick="go('player',{pId:'${row.p.id}'})">
+        <span class="lb3-rk">${i+1}</span>
+        <span class="lb3-nm">${tdot}<div class="lb3-nm-i"><div>${esc(row.p.name)}</div><div class="lb3-nm-s">CH ${row.ch}</div></div></span>
+        <span class="lb3-thru">${row.thru}</span>
+        <span class="lb3-v">${grossTxt}</span>
+        <span class="lb3-v">${netTxt}</span>
+        <span class="lb3-v ${tpClass}">${tpTxt}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  } else {
+    // Quota mode
+    h += `<div class="lb3">
+      <div class="lb3-hd">
+        <span></span>
+        <span>Player</span>
+        <span>Thru</span>
+        ${hd('qtarget', 'Target')}
+        ${hd('qpts',    'Earned')}
+        ${hd('quota',   '±Q')}
+      </div>`;
+    rows.forEach((row, i) => {
+      const tdot = `<span class="tdot t${row.p.t}"></span>`;
+      const qTargetTxt = row.qTarget == null ? '—' : row.qTarget;
+      const qPtsTxt = row.qPts == null ? '—' : row.qPts;
+      const qClass = row.qDiff == null ? '' : diffClass(row.qDiff);
+      const qTxt = row.qDiff == null ? '—' : fmtDiff(row.qDiff);
+      h += `<div class="lb3-row" onclick="go('player',{pId:'${row.p.id}'})">
+        <span class="lb3-rk">${i+1}</span>
+        <span class="lb3-nm">${tdot}<div class="lb3-nm-i"><div>${esc(row.p.name)}</div><div class="lb3-nm-s">CH ${row.ch}</div></div></span>
+        <span class="lb3-thru">${row.thru}</span>
+        <span class="lb3-v lb3-dim">${qTargetTxt}</span>
+        <span class="lb3-v">${qPtsTxt}</span>
+        <span class="lb3-v ${qClass}">${qTxt}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  }
 
   // Footer note
   if (scope === 'trip') {
-    h += `<div class="foot">Tap any column header to sort<br>Quota = target (36 − CH per round) · Pts = earned · ±Q = difference<br>Net = Gross − strokes received on holes played<br>* indicates round in progress</div>`;
+    h += `<div class="foot">Tap headers to sort · Tap a player for full breakdown<br>${mode==='scoring'?'Net = Gross − strokes received on holes played':'Target = quota goal per round · Earned = points scored · ±Q = difference'}<br>* indicates round in progress</div>`;
   } else {
-    h += `<div class="foot">Showing ${esc(ROUNDS.find(r=>r.id===scope).course)}<br>Tap any column header to sort · Tap a player for full breakdown</div>`;
+    h += `<div class="foot">Showing ${esc(ROUNDS.find(r=>r.id===scope).course)}<br>Tap headers to sort · Tap a player for full breakdown</div>`;
   }
 
   return h;
