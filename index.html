@@ -989,7 +989,7 @@ function renderRoundStreak(wins) {
 function renderLboard() {
   // Sub-tabs: Trip (combined) + each round
   const scope = S.lbScope || 'trip';
-  const sort = S.lbSort || 'gross';
+  const sort = S.lbSort || 'topar';
 
   let h = topbar(null, 'Leaderboards');
 
@@ -1058,9 +1058,9 @@ function renderLboard() {
 
   // Sort tabs
   h += `<div class="lb-sort">
+    <button class="${sort==='topar'?'sel':''}" onclick="S.lbSort='topar';render()">±Par</button>
     <button class="${sort==='gross'?'sel':''}" onclick="S.lbSort='gross';render()">Gross</button>
     <button class="${sort==='net'?'sel':''}" onclick="S.lbSort='net';render()">Net</button>
-    <button class="${sort==='topar'?'sel':''}" onclick="S.lbSort='topar';render()">To Par</button>
     <button class="${sort==='quota'?'sel':''}" onclick="S.lbSort='quota';render()">Quota</button>
   </div>`;
 
