@@ -227,6 +227,10 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .stat-tbl .st-v.neg { color:var(--bad); font-weight:700; }
 
 /* Big leaderboard view */
+.lb-hero { background:linear-gradient(160deg,var(--card2),var(--card)); border:1px solid var(--border); border-radius:16px; padding:16px 14px; margin-bottom:14px; }
+.lb-hero-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; font-weight:700; }
+.lb-hero-lead { font-size:14px; font-weight:700; margin-top:4px; }
+
 .lb-mode { display:flex; gap:4px; background:var(--bg2); border-radius:10px; padding:3px; margin-bottom:12px; }
 .lb-mode button { flex:1; padding:10px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .lb-mode button.sel { background:var(--card2); color:var(--text); box-shadow:var(--shadow); }
@@ -1047,9 +1051,46 @@ function renderRoundStreak(wins) {
 function renderLboard() {
   // Sub-tabs: Trip (combined) + each round
   const scope = S.lbScope || 'trip';
-  const sort = S.lbSort || 'topar';
+  let sort = S.lbSort || 'topar';
 
   let h = topbar(null, 'Leaderboards');
+
+  // Team scoreboard at top — context varies by scope
+  let t1Pts, t2Pts, t1Diff, t2Diff, t1Label, t2Label, leadLine, subLabel;
+  if (scope === 'trip') {
+    t1Pts = tripPoints(1); t2Pts = tripPoints(2);
+    t1Diff = tripScore(1); t2Diff = tripScore(2);
+    subLabel = 'Trip Total';
+  } else {
+    const s1 = teamRoundScore(1, scope), s2 = teamRoundScore(2, scope);
+    t1Pts = s1.pts; t2Pts = s2.pts;
+    t1Diff = s1.total; t2Diff = s2.total;
+    const r = ROUNDS.find(x => x.id === scope);
+    subLabel = r ? r.short : 'Round';
+  }
+  const hasAny = t1Pts > 0 || t2Pts > 0;
+  const lead1 = t1Pts > t2Pts, lead2 = t2Pts > t1Pts;
+  if (!hasAny) leadLine = '<span style="color:var(--dim);">No scores yet</span>';
+  else if (t1Pts === t2Pts) leadLine = '<span style="color:var(--warn);">All Square</span>';
+  else if (lead1) leadLine = `<span style="color:var(--t1);">Team 1 leads by ${t1Pts-t2Pts} pts</span>`;
+  else leadLine = `<span style="color:var(--t2);">Team 2 leads by ${t2Pts-t1Pts} pts</span>`;
+
+  h += `<div class="lb-hero">
+    <div class="lb-hero-lbl">${esc(subLabel)}</div>
+    <div class="lb-hero-lead">${leadLine}</div>
+    <div class="scoreboard" style="margin:12px 0 0;">
+      <div class="team-card t1 ${lead1?'leading':''}">
+        <div class="lbl">Team 1</div>
+        <div class="big">${t1Pts}</div>
+        <div class="sub">${fmtDiff(t1Diff)} vs Q</div>
+      </div>
+      <div class="team-card t2 ${lead2?'leading':''}">
+        <div class="lbl">Team 2</div>
+        <div class="big">${t2Pts}</div>
+        <div class="sub">${fmtDiff(t2Diff)} vs Q</div>
+      </div>
+    </div>
+  </div>`;
 
   // Scope selector
   h += `<div class="stat-tabs">
