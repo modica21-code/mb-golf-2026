@@ -382,19 +382,32 @@ const PLAYERS = [
 const PMAP = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
 const ROUNDS = [
   {id:'r1', course:'Grande Dunes Resort Club', short:'Grande Dunes', date:'Thu 4/23', time:'1:40 PM',
+   tees:'Blue', rating:72.8, slope:134, yards:6737,
+   par:[4,3,4,5,4,4,5,3,4, 4,3,4,5,3,4,4,5,4],
+   hcp:[10,16,6,4,14,18,12,8,2, 13,17,15,1,5,3,7,11,9],
    groups:[['bwu','bob','andrew','bill'],['modes','scott','hill','tumolo'],['marty','anish','carter','pisano'],['carson','matteo']],
    note:''},
   {id:'r2', course:'Myrtle Beach National — Kings North', short:'Kings North', date:'Fri 4/24', time:'8:34 AM',
+   tees:'Blue', yards:5662,
+   par:[5,4,4,3,4,5,4,3,4, 5,4,3,4,4,5,4,3,4],
+   hcp:[10,8,12,16,14,2,6,18,4, 13,11,17,3,9,1,7,15,5],
    groups:[['bwu','marty','modes','pisano'],['tumolo','anish','scott','hill'],['carter','matteo','carson','andrew'],['bob','bill']],
    note:''},
   {id:'r4', course:'Wild Wing — Avocet', short:'Wild Wing', date:'Sat 4/25', time:'10:12 AM',
+   tees:'Blue', rating:72.7, slope:131, yards:6658,
+   par:[4,4,4,5,3,4,5,3,4, 4,5,3,4,4,5,4,3,4],
+   hcp:[9,17,3,5,11,1,7,15,13, 12,6,8,16,18,10,2,14,4],
    groups:[['pisano','carter','tumolo','carson'],['modes','marty','hill','scott'],['matteo','bob','andrew','bill'],['anish','bwu']],
    note:''},
   {id:'r5', course:'TPC Myrtle Beach', short:'TPC MB', date:'Sun 4/26', time:'9:03 AM',
+   tees:'Blue', yards:6600,
+   par:[4,5,4,4,3,5,3,4,4, 4,4,4,3,5,4,4,3,5],
+   hcp:[9,7,3,5,15,11,17,13,1, 12,8,18,14,16,2,10,6,4],
    groups:[['bwu','carter','hill','scott'],['modes','pisano','andrew','carson'],['tumolo','matteo','anish','marty'],['bill','bob']],
    note:''}
 ];
 const DEFAULT_PAR = [4,4,3,4,5,4,3,4,5,4,4,3,5,4,3,4,4,5];
+const DEFAULT_HCP = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
 const SEED = {};
 const PAR_SEED = {};
 const FB_URL = "https://mb-golf-2026-default-rtdb.firebaseio.com";
@@ -495,7 +508,35 @@ function userLabel() {
 }
 function courseHcp(pId) { if (S.chcp[pId] != null) return S.chcp[pId]; return Math.round(PMAP[pId].hi); }
 function quotaFor(pId) { return 36 - courseHcp(pId); }
-function parsFor(rId) { const p = S.pars[rId]; return (p && p.length === 18) ? p : DEFAULT_PAR; }
+function parsFor(rId) {
+  if (S.pars[rId] && S.pars[rId].length === 18) return S.pars[rId];
+  const r = ROUNDS.find(x => x.id === rId);
+  return (r && r.par && r.par.length === 18) ? r.par : DEFAULT_PAR;
+}
+function hcpFor(rId) {
+  const r = ROUNDS.find(x => x.id === rId);
+  return (r && r.hcp && r.hcp.length === 18) ? r.hcp : DEFAULT_HCP;
+}
+/* Strokes a player gets on a single hole, based on course handicap and hole's stroke index */
+function strokesOnHole(courseHandicap, holeStrokeIndex) {
+  if (!courseHandicap || courseHandicap < 1) return 0;
+  let strokes = 0;
+  // 1st pass: holes ranked 1..18 each get a stroke up to the player's handicap
+  if (courseHandicap >= holeStrokeIndex) strokes++;
+  // 2nd pass: handicaps 19+ award an additional stroke on harder holes
+  if (courseHandicap > 18 && (courseHandicap - 18) >= holeStrokeIndex) strokes++;
+  // 3rd pass: handicaps 37+ (just in case)
+  if (courseHandicap > 36 && (courseHandicap - 36) >= holeStrokeIndex) strokes++;
+  return strokes;
+}
+/* Strokes a player gets across a SET of completed holes (running) */
+function strokesReceivedOn(rId, pId, holesPlayedIdxArr) {
+  const ch = courseHcp(pId);
+  const hcp = hcpFor(rId);
+  let total = 0;
+  holesPlayedIdxArr.forEach(i => { total += strokesOnHole(ch, hcp[i]); });
+  return total;
+}
 function pointsForHole(score, par) {
   if (!score || score < 1) return null;
   const d = score - par;
@@ -508,20 +549,26 @@ function pointsForHole(score, par) {
 }
 function pointsForPlayerRound(pId, rId) {
   const sc = (S.scores[rId] || {})[pId];
-  if (!sc) return {pts:0, holes:0, gross:0, toPar:0};
+  if (!sc) return {pts:0, holes:0, gross:0, toPar:0, strokes:0};
   const pars = parsFor(rId);
-  let pts = 0, holes = 0, gross = 0, parSum = 0;
+  const hcp = hcpFor(rId);
+  const ch = courseHcp(pId);
+  let pts = 0, holes = 0, gross = 0, parSum = 0, strokes = 0;
   for (let i = 0; i < 18; i++) {
     const s = parseInt(sc[i]);
-    if (s && s > 0) { pts += pointsForHole(s, pars[i]); holes++; gross += s; parSum += pars[i]; }
+    if (s && s > 0) {
+      pts += pointsForHole(s, pars[i]);
+      holes++; gross += s; parSum += pars[i];
+      strokes += strokesOnHole(ch, hcp[i]);
+    }
   }
-  return {pts, holes, gross, toPar: gross - parSum};
+  return {pts, holes, gross, toPar: gross - parSum, strokes};
 }
 function quotaDiffFor(pId, rId) {
   const r = pointsForPlayerRound(pId, rId);
   const q = quotaFor(pId);
-  if (r.holes === 0) return {diff:0, pts:0, q, holes:0, gross:0, toPar:0};
-  return {diff: r.pts - q, pts:r.pts, q, holes:r.holes, gross:r.gross, toPar:r.toPar};
+  if (r.holes === 0) return {diff:0, pts:0, q, holes:0, gross:0, toPar:0, strokes:0, net:null};
+  return {diff: r.pts - q, pts:r.pts, q, holes:r.holes, gross:r.gross, toPar:r.toPar, strokes:r.strokes, net: r.gross - r.strokes};
 }
 function teamRoundScore(tNum, rId) {
   let total = 0, any = false, allFull = true;
@@ -1003,21 +1050,19 @@ function renderLboard() {
   const rows = PLAYERS.map(p => {
     const ch = courseHcp(p.id);
     if (scope === 'trip') {
-      let g = 0, n = 0, parTotal = 0, holes = 0, qPts = 0, qDiff = 0, roundsPlayed = 0;
+      let g = 0, n = 0, parTotal = 0, holes = 0, qPts = 0, qDiff = 0, roundsPlayed = 0, anyHoles = false;
       ROUNDS.forEach(r => {
         const x = quotaDiffFor(p.id, r.id);
         if (x.holes > 0) {
           g += x.gross; parTotal += x.gross - x.toPar; holes += x.holes; qPts += x.pts;
+          n += x.net;     // running net = gross - strokes received on holes played
+          anyHoles = true;
         }
         if (x.holes >= 18) {
-          // Apply full course handicap once for net per completed round
-          n += x.gross - ch;
           qDiff += x.diff;
           roundsPlayed++;
         }
       });
-      // For trip net of in-progress: only count completed rounds (otherwise net inflates)
-      // Show "incomplete" indicator
       const allDone = roundsPlayed === ROUNDS.length;
       // Find the active (in-progress) round and how many holes done in it
       let activeR = null, activeHoles = 0;
@@ -1033,21 +1078,22 @@ function renderLboard() {
       else thruTxt = '—';
       return {
         p, ch,
-        gross: g,
-        net: roundsPlayed > 0 ? n : null,
-        toPar: g - parTotal,
+        gross: anyHoles ? g : null,
+        net: anyHoles ? n : null,
+        toPar: anyHoles ? g - parTotal : null,
         holes,
         roundsPlayed,
         allDone,
         thru: thruTxt,
-        qPts, qDiff: roundsPlayed > 0 ? qDiff : null
+        qPts, qDiff: anyHoles ? qDiff : null,
+        partial: anyHoles && !allDone
       };
     } else {
       const x = quotaDiffFor(p.id, scope);
       return {
         p, ch,
         gross: x.holes > 0 ? x.gross : null,
-        net: x.holes >= 18 ? x.gross - ch : null,
+        net: x.holes > 0 ? x.net : null,
         toPar: x.holes > 0 ? x.toPar : null,
         holes: x.holes,
         thru: x.holes === 0 ? '—' : (x.holes >= 18 ? 'F' : `${x.holes}`),
@@ -1398,9 +1444,11 @@ function renderGroupHoleMode(r, group, pars) {
   strip += `</div>`;
 
   // Hole header
+  const hcps = hcpFor(r.id);
+  const holeHcp = hcps[i];
   let h = strip;
   h += `<div class="hs-hdr">
-    <div class="hnum">Hole ${i+1}</div>
+    <div class="hnum">Hole ${i+1} · HCP ${holeHcp}</div>
     <div class="hpar">Par ${par}</div>
     <div class="hlbl">${par===3?'Short':(par===5?'Long':'Middle')}</div>
   </div>`;
@@ -1420,16 +1468,18 @@ function renderGroupHoleMode(r, group, pars) {
       else vcls = 'bad';
     }
     // running totals thru this hole
-    let rt = 0, rp = 0, rh = 0;
+    let rt = 0, rp = 0, rh = 0, rstrokes = 0;
     for (let k = 0; k <= i; k++) {
       const sv = parseInt(sc[k]);
-      if (sv) { rt += sv; rp += pars[k]; rh++; }
+      if (sv) { rt += sv; rp += pars[k]; rh++; rstrokes += strokesOnHole(courseHcp(pid), hcps[k]); }
     }
     const {diff, pts, q, holes} = quotaDiffFor(pid, r.id);
-    const thruTxt = rh > 0 ? `Thru ${rh}: ${rt} (${fmtDiff(rt-rp)}) · ${pts} pts` : 'Not started';
+    const strokesHere = strokesOnHole(courseHcp(pid), holeHcp);
+    const dot = strokesHere > 0 ? `<span style="color:var(--warn);font-size:13px;letter-spacing:-1px;">${'•'.repeat(strokesHere)}</span> ` : '';
+    const thruTxt = rh > 0 ? `Thru ${rh}: ${rt} gross (${fmtDiff(rt-rp)}) · ${rt-rstrokes} net · ${pts} pts` : 'Not started';
     h += `<div class="hs-plr">
       <div class="hs-nm">
-        <div class="n"><span class="dot t${p.t}"></span>${esc(p.name)} <span style="color:var(--dim);font-size:11px;font-weight:400;">Q${q}</span></div>
+        <div class="n"><span class="dot t${p.t}"></span>${dot}${esc(p.name)} <span style="color:var(--dim);font-size:11px;font-weight:400;">Q${q}</span></div>
         <div class="m">${thruTxt}</div>
       </div>
       <div class="hs-step">
@@ -1722,7 +1772,10 @@ async function setPar(rId, i, val) {
   if (S.locks[rId]) { alert('Round is locked. Unlock in Admin to edit.'); return; }
   const v = parseInt(val);
   if (v < 3 || v > 6) return;
-  if (!S.pars[rId] || S.pars[rId].length !== 18) S.pars[rId] = [...DEFAULT_PAR];
+  if (!S.pars[rId] || S.pars[rId].length !== 18) {
+    const r = ROUNDS.find(x => x.id === rId);
+    S.pars[rId] = (r && r.par && r.par.length === 18) ? [...r.par] : [...DEFAULT_PAR];
+  }
   S.pars[rId][i] = v;
   await fbPatch('pars', {[rId]: S.pars[rId]});
   render();
