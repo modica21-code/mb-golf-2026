@@ -125,6 +125,89 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .row { display:flex; gap:10px; }
 .row > * { flex:1; }
 
+/* Dashboard */
+.dash-hero { background:linear-gradient(160deg,var(--card2),var(--card)); border:1px solid var(--border); border-radius:18px; padding:18px 16px 14px; margin-bottom:14px; }
+.dash-hello { font-size:13px; color:var(--muted); font-weight:500; }
+.dash-status { font-size:15px; font-weight:700; margin-top:4px; }
+.dash-streak { display:flex; gap:6px; margin-top:14px; }
+.rs-box { flex:1; padding:8px 4px; border-radius:8px; text-align:center; font-size:11px; font-weight:700; letter-spacing:.4px; background:var(--bg2); color:var(--dim); border:1px solid var(--border); }
+.rs-box.rs-t1 { background:var(--t1); color:var(--bg); border-color:var(--t1); }
+.rs-box.rs-t2 { background:var(--t2); color:var(--bg); border-color:var(--t2); }
+.rs-box.rs-tie { background:var(--warn); color:var(--bg); border-color:var(--warn); }
+.rs-box.rs-up { background:var(--bg2); color:var(--dim); }
+
+.dash-resume { background:rgba(251,191,36,.08); border:1px solid var(--warn); border-radius:14px; padding:14px; margin-bottom:14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.dash-resume:active { transform:scale(.99); }
+.dash-resume .rsm-lbl { font-size:11px; color:var(--warn); text-transform:uppercase; letter-spacing:.7px; font-weight:700; }
+.dash-resume .rsm-r { font-size:14px; font-weight:600; margin-top:4px; }
+.dash-resume .rsm-p { font-size:11px; color:var(--dim); margin-top:2px; }
+.dash-resume .rsm-arrow { font-size:22px; color:var(--warn); }
+
+.dash-live { background:var(--card); border:2px solid var(--good); border-radius:14px; padding:14px; margin-bottom:10px; cursor:pointer; box-shadow:0 0 14px rgba(74,222,128,.12); }
+.dash-live:active { transform:scale(.995); }
+.dash-live-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:12px; }
+.dash-live-tm { display:flex; flex-direction:column; gap:3px; align-items:flex-end; font-size:13px; font-variant-numeric:tabular-nums; }
+.dash-live-t { font-weight:600; }
+.dash-live-t.t1 { color:var(--t1); }
+.dash-live-t.t2 { color:var(--t2); }
+.dash-live-t b { font-size:14px; }
+.dash-live-groups { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.dlg { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:8px 4px; text-align:center; }
+.dlg.mine { border-color:var(--warn); background:rgba(251,191,36,.1); }
+.dlg-n { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.dlg.mine .dlg-n { color:var(--warn); }
+.dlg-h { font-size:12px; font-weight:600; margin-top:3px; font-variant-numeric:tabular-nums; }
+
+.dash-leaders-mini { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+.dlm { display:grid; grid-template-columns:22px 1fr 40px 50px; align-items:center; gap:6px; padding:5px 0; font-size:13px; }
+.dlm-r { color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums; }
+.dlm-n { display:flex; align-items:center; gap:6px; font-weight:600; }
+.dlm-h { color:var(--muted); font-size:11px; text-align:right; font-variant-numeric:tabular-nums; }
+.dlm-d { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+.dlm-d.pos { color:var(--good); }
+.dlm-d.neg { color:var(--bad); }
+
+.dash-next { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.dash-next:active { transform:scale(.99); }
+.dash-next .rsm-arrow { font-size:22px; color:var(--muted); }
+
+.dash-recap { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:14px; cursor:pointer; }
+.dash-recap:active { transform:scale(.995); }
+.dr-row { display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; }
+.dr-side { padding:10px; border-radius:10px; background:var(--bg2); text-align:center; }
+.dr-side.t1 { border-left:3px solid var(--t1); }
+.dr-side.t2 { border-right:3px solid var(--t2); }
+.dr-side.win { background:rgba(74,222,128,.1); }
+.dr-side .lb { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+.dr-side .vl { font-size:22px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
+.dr-side.t1 .vl { color:var(--t1); }
+.dr-side.t2 .vl { color:var(--t2); }
+.dr-vs { font-size:11px; color:var(--good); font-weight:700; letter-spacing:.7px; }
+.dr-top { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); text-align:center; }
+.dr-top b { color:var(--text); }
+
+.dash-leaders { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:14px; }
+.dl-row { display:grid; grid-template-columns:32px 1fr auto; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--border); cursor:pointer; }
+.dl-row:last-child { border-bottom:none; }
+.dl-row:active { background:var(--bg2); }
+.dl-medal { font-size:18px; }
+.dl-nm { font-size:14px; font-weight:600; display:flex; align-items:center; gap:7px; }
+.dl-d { font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+.dl-d.pos { color:var(--good); }
+.dl-d.neg { color:var(--bad); }
+
+.dash-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
+.ds-tile { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 6px; text-align:center; }
+.ds-tile .ds-n { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+.ds-tile .ds-l { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; margin-top:3px; }
+
+.dash-best { background:rgba(251,191,36,.06); border:1px solid var(--warn); border-radius:12px; padding:12px 14px; margin-bottom:14px; cursor:pointer; }
+.dash-best:active { transform:scale(.995); }
+
+.dash-sub-toggle { display:flex; gap:6px; margin:18px 0 10px; }
+.dash-sub-toggle button { flex:1; background:var(--card); border:1px solid var(--border); color:var(--muted); padding:10px; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+.dash-sub-toggle button.sel { background:var(--card2); color:var(--text); border-color:var(--text); }
+
 /* Login screen */
 .login-wrap { min-height:90vh; display:flex; align-items:center; justify-content:center; padding:20px; }
 .login-card { width:100%; max-width:360px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 22px; text-align:center; box-shadow:var(--shadow); }
@@ -398,6 +481,95 @@ function roundStatus(rId) {
   return 'active';
 }
 function tripScore(tNum) { let total = 0; ROUNDS.forEach(r => { total += teamRoundScore(tNum, r.id).total; }); return total; }
+
+/* ── Dashboard helpers ─────────────────────────── */
+function activeRound() { return ROUNDS.find(r => roundStatus(r.id) === 'active'); }
+function lastCompletedRound() {
+  for (let i = ROUNDS.length - 1; i >= 0; i--) {
+    if (roundStatus(ROUNDS[i].id) === 'done') return ROUNDS[i];
+  }
+  return null;
+}
+function nextRound() {
+  return ROUNDS.find(r => roundStatus(r.id) === 'upcoming');
+}
+function tripBirdiesEagles() {
+  let bd = 0, eg = 0, pars = 0;
+  ROUNDS.forEach(r => {
+    const ps = parsFor(r.id);
+    PLAYERS.forEach(p => {
+      const sc = (S.scores[r.id]||{})[p.id] || [];
+      for (let i = 0; i < 18; i++) {
+        const s = parseInt(sc[i]); if (!s) continue;
+        const d = s - ps[i];
+        if (d <= -2) eg++;
+        else if (d === -1) bd++;
+        else if (d === 0) pars++;
+      }
+    });
+  });
+  return {bd, eg, pars};
+}
+function topPerformers(rId, n) {
+  // Returns top n players for given round (or full trip if rId === null) by quota diff
+  const rows = PLAYERS.map(p => {
+    if (rId === null) {
+      let total = 0, played = 0;
+      ROUNDS.forEach(r => {
+        const x = quotaDiffFor(p.id, r.id);
+        if (x.holes >= 18) { total += x.diff; played++; }
+      });
+      return { p, diff: played > 0 ? total : null, played };
+    }
+    const x = quotaDiffFor(p.id, rId);
+    return { p, diff: x.holes > 0 ? x.diff : null, holes: x.holes };
+  }).filter(r => r.diff !== null);
+  rows.sort((a,b) => b.diff - a.diff);
+  return rows.slice(0, n);
+}
+function bestSingleRound() {
+  let best = null;
+  ROUNDS.forEach(r => {
+    PLAYERS.forEach(p => {
+      const x = quotaDiffFor(p.id, r.id);
+      if (x.holes >= 18) {
+        if (!best || x.diff > best.diff) best = { p, r, ...x };
+      }
+    });
+  });
+  return best;
+}
+function teamWinsByRound() {
+  // Returns array of 'T1' | 'T2' | 'tie' | null (null = upcoming)
+  return ROUNDS.map(r => {
+    if (roundStatus(r.id) === 'upcoming') return null;
+    const t1 = teamRoundScore(1, r.id).total;
+    const t2 = teamRoundScore(2, r.id).total;
+    if (t1 > t2) return 'T1';
+    if (t2 > t1) return 'T2';
+    return 'tie';
+  });
+}
+function liveRoundLeaders(rId) {
+  // Return all players in this round sorted by current quota diff (only those with holes played)
+  return PLAYERS.map(p => {
+    const x = quotaDiffFor(p.id, rId);
+    return { p, ...x };
+  }).filter(r => r.holes > 0).sort((a,b) => b.diff - a.diff);
+}
+function groupProgress(r) {
+  // Returns { gIdx, players, minHoles, maxHoles, label }
+  return r.groups.map((g, gIdx) => {
+    let minH = 18, maxH = 0;
+    g.forEach(pid => {
+      const sc = (S.scores[r.id]||{})[pid] || [];
+      const h = sc.filter(x => parseInt(x)).length;
+      if (h < minH) minH = h;
+      if (h > maxH) maxH = h;
+    });
+    return { gIdx, players:g, minH, maxH };
+  });
+}
 function go(view, opts) {
   opts = opts || {};
   const groupChanged = (opts.rId !== undefined && opts.rId !== S.rId) || (opts.gIdx !== undefined && opts.gIdx !== S.gIdx);
@@ -534,44 +706,209 @@ function renderHome() {
   const t1 = tripScore(1), t2 = tripScore(2);
   const leading1 = t1 > t2, leading2 = t2 > t1;
   const completed = ROUNDS.filter(r => roundStatus(r.id) === 'done').length;
-  let h = topbar(null, 'MB 2026 · Quota Cup');
-  h += `<div class="scoreboard">
-    <div class="team-card t1 ${leading1?'leading':''}">
-      <div class="lbl">Team 1</div>
-      <div class="big">${fmtDiff(t1)}</div>
-      <div class="sub">7 players</div>
+  const live = activeRound();
+  const last = lastCompletedRound();
+  const next = nextRound();
+  const u = currentUser();
+  const greeting = u && u.kind === 'player' ? u.p.name : (u ? 'Admin' : 'there');
+
+  let h = topbar(null, 'MB \'26 Quota Cup');
+
+  // ─── Hero scoreboard ───
+  const wins = teamWinsByRound();
+  const t1Wins = wins.filter(w => w === 'T1').length;
+  const t2Wins = wins.filter(w => w === 'T2').length;
+  const ties = wins.filter(w => w === 'tie').length;
+  let leadTxt = '';
+  if (t1 === t2 && (t1 !== 0 || completed > 0)) leadTxt = '<span style="color:var(--warn);">All Square</span>';
+  else if (leading1) leadTxt = `<span style="color:var(--t1);">Team 1 leads by ${t1-t2}</span>`;
+  else if (leading2) leadTxt = `<span style="color:var(--t2);">Team 2 leads by ${t2-t1}</span>`;
+  else leadTxt = '<span style="color:var(--dim);">Tee it up</span>';
+  h += `<div class="dash-hero">
+    <div class="dash-hello">Hey ${esc(greeting)} 👋</div>
+    <div class="dash-status">${leadTxt}</div>
+    <div class="scoreboard" style="margin:14px 0 0;">
+      <div class="team-card t1 ${leading1?'leading':''}">
+        <div class="lbl">Team 1</div>
+        <div class="big">${fmtDiff(t1)}</div>
+        <div class="sub">${t1Wins} round${t1Wins===1?'':'s'} won</div>
+      </div>
+      <div class="team-card t2 ${leading2?'leading':''}">
+        <div class="lbl">Team 2</div>
+        <div class="big">${fmtDiff(t2)}</div>
+        <div class="sub">${t2Wins} round${t2Wins===1?'':'s'} won</div>
+      </div>
     </div>
-    <div class="team-card t2 ${leading2?'leading':''}">
-      <div class="lbl">Team 2</div>
-      <div class="big">${fmtDiff(t2)}</div>
-      <div class="sub">7 players</div>
-    </div>
+    <div class="dash-streak">${renderRoundStreak(wins)}</div>
   </div>`;
+
+  // ─── Resume scoring (if applicable) ───
   if (S._lastGroup) {
     const lgR = ROUNDS.find(x => x.id === S._lastGroup.rId);
     if (lgR && lgR.groups[S._lastGroup.gIdx]) {
       const lgG = lgR.groups[S._lastGroup.gIdx];
       const nms = lgG.map(pid => PMAP[pid] && PMAP[pid].name).filter(Boolean).join(', ');
-      h += `<div class="round-card active" onclick="go('group',{rId:'${lgR.id}',gIdx:${S._lastGroup.gIdx}})" style="border:1px solid var(--warn);">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="min-width:0;flex:1;">
-            <div style="font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.7px;font-weight:700;">▶ Resume Scoring</div>
-            <div style="font-size:14px;font-weight:600;margin-top:3px;">${esc(lgR.short)} · Group ${S._lastGroup.gIdx+1}</div>
-            <div style="font-size:11px;color:var(--dim);margin-top:2px;">${esc(nms)}</div>
-          </div>
-          <span style="font-size:20px;">→</span>
+      h += `<div class="dash-resume" onclick="go('group',{rId:'${lgR.id}',gIdx:${S._lastGroup.gIdx}})">
+        <div>
+          <div class="rsm-lbl">▶ Resume Scoring</div>
+          <div class="rsm-r">${esc(lgR.short)} · Group ${S._lastGroup.gIdx+1}</div>
+          <div class="rsm-p">${esc(nms)}</div>
         </div>
+        <span class="rsm-arrow">→</span>
       </div>`;
     }
   }
-  h += `<div class="tabs">
-    <button class="tab ${S.subTab==='standings'?'active':''}" onclick="go('home',{subTab:'standings'})">Rounds</button>
-    <button class="tab ${S.subTab==='players'?'active':''}" onclick="go('home',{subTab:'players'})">Players</button>
+
+  // ─── Live now ───
+  if (live) {
+    const lt1 = teamRoundScore(1, live.id).total;
+    const lt2 = teamRoundScore(2, live.id).total;
+    const groupProg = groupProgress(live);
+    const leaders = liveRoundLeaders(live.id).slice(0, 3);
+    h += `<div class="sec-h"><span>🟢 Live Now</span><span style="color:var(--good);font-weight:600;text-transform:none;">${esc(live.short)}</span></div>`;
+    h += `<div class="dash-live" onclick="go('round',{rId:'${live.id}'})">
+      <div class="dash-live-top">
+        <div>
+          <div style="font-size:14px;font-weight:600;">${esc(live.course)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(live.date)} · ${esc(live.time)}</div>
+        </div>
+        <div class="dash-live-tm">
+          <span class="dash-live-t t1">T1 <b>${fmtDiff(lt1)}</b></span>
+          <span class="dash-live-t t2">T2 <b>${fmtDiff(lt2)}</b></span>
+        </div>
+      </div>
+      <div class="dash-live-groups">`;
+    groupProg.forEach(gp => {
+      const isMine = userPlayerId() && live.groups[gp.gIdx].includes(userPlayerId());
+      h += `<div class="dlg ${isMine?'mine':''}">
+        <div class="dlg-n">G${gp.gIdx+1}${isMine?' · You':''}</div>
+        <div class="dlg-h">${gp.minH===gp.maxH?gp.minH+'/18':gp.minH+'-'+gp.maxH+'/18'}</div>
+      </div>`;
+    });
+    h += `</div>`;
+    if (leaders.length > 0) {
+      h += `<div class="dash-leaders-mini">`;
+      leaders.forEach((ld, i) => {
+        const cls = diffClass(ld.diff);
+        const tdot = `<span class="tdot t${ld.p.t}"></span>`;
+        h += `<div class="dlm">
+          <span class="dlm-r">${i+1}</span>
+          <span class="dlm-n">${tdot}${esc(ld.p.name)}</span>
+          <span class="dlm-h">${ld.holes}h</span>
+          <span class="dlm-d ${cls}">${fmtDiff(ld.diff)}</span>
+        </div>`;
+      });
+      h += `</div>`;
+    }
+    h += `</div>`;
+  }
+
+  // ─── Today / Next ───
+  if (!live && next) {
+    h += `<div class="sec-h"><span>⏭ Up Next</span></div>`;
+    h += `<div class="dash-next" onclick="go('round',{rId:'${next.id}'})">
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">${esc(next.date)} · ${esc(next.time)}</div>
+        <div style="font-size:16px;font-weight:700;margin-top:4px;">${esc(next.course)}</div>
+      </div>
+      <span class="rsm-arrow">→</span>
+    </div>`;
+  }
+
+  // ─── Last completed round recap ───
+  if (last) {
+    const dt1 = teamRoundScore(1, last.id).total;
+    const dt2 = teamRoundScore(2, last.id).total;
+    const winner = dt1 > dt2 ? 'T1' : (dt2 > dt1 ? 'T2' : null);
+    const tops = topPerformers(last.id, 1);
+    const top = tops[0] || null;
+    h += `<div class="sec-h"><span>📜 Last Round</span><span style="color:var(--dim);font-weight:500;text-transform:none;">${esc(last.short)}</span></div>`;
+    h += `<div class="dash-recap" onclick="go('round',{rId:'${last.id}'})">
+      <div class="dr-row">
+        <div class="dr-side ${winner==='T1'?'win':''} t1">
+          <div class="lb">Team 1</div>
+          <div class="vl">${fmtDiff(dt1)}</div>
+        </div>
+        <div class="dr-vs">${winner ? winner+' WINS' : 'TIED'}</div>
+        <div class="dr-side ${winner==='T2'?'win':''} t2">
+          <div class="lb">Team 2</div>
+          <div class="vl">${fmtDiff(dt2)}</div>
+        </div>
+      </div>
+      ${top ? `<div class="dr-top">⭐ <b>${esc(top.p.name)}</b> led the day at ${fmtDiff(top.diff)}</div>` : ''}
+    </div>`;
+  }
+
+  // ─── Trip leaders (top 3) ───
+  const tripTop = topPerformers(null, 3);
+  if (tripTop.length > 0) {
+    h += `<div class="sec-h"><span>👑 Trip Leaders</span><span style="color:var(--accent,var(--dim));font-weight:500;text-transform:none;cursor:pointer;" onclick="go('home',{subTab:'players'})">See all →</span></div>`;
+    h += `<div class="dash-leaders">`;
+    tripTop.forEach((row, i) => {
+      const medal = ['🥇','🥈','🥉'][i] || (i+1);
+      h += `<div class="dl-row" onclick="go('player',{pId:'${row.p.id}'})">
+        <span class="dl-medal">${medal}</span>
+        <span class="dl-nm"><span class="tdot t${row.p.t}"></span>${esc(row.p.name)}<span style="color:var(--dim);font-size:11px;margin-left:6px;">${row.played}r</span></span>
+        <span class="dl-d ${diffClass(row.diff)}">${fmtDiff(row.diff)}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  // ─── Stats strip ───
+  const stats = tripBirdiesEagles();
+  const best = bestSingleRound();
+  h += `<div class="sec-h"><span>📊 Trip Stats</span></div>`;
+  h += `<div class="dash-stats">
+    <div class="ds-tile"><div class="ds-n">${stats.eg}</div><div class="ds-l">Eagles</div></div>
+    <div class="ds-tile"><div class="ds-n">${stats.bd}</div><div class="ds-l">Birdies</div></div>
+    <div class="ds-tile"><div class="ds-n">${stats.pars}</div><div class="ds-l">Pars</div></div>
+    <div class="ds-tile"><div class="ds-n">${completed}/${ROUNDS.length}</div><div class="ds-l">Rounds</div></div>
   </div>`;
-  if (S.subTab === 'standings') h += renderRoundList();
-  else if (S.subTab === 'players') h += renderAllPlayersList();
-  h += `<div class="foot">Trip ${completed}/${ROUNDS.length} rounds done<br>Quota = 36 − Course Handicap<br>Bogey = 1 · Par = 2 · Birdie = 4 · Eagle = 8</div>`;
+  if (best) {
+    h += `<div class="dash-best" onclick="go('player',{pId:'${best.p.id}'})">
+      <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;">🏆 Best Round So Far</span>
+      <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:15px;font-weight:700;"><span class="tdot t${best.p.t}"></span>${esc(best.p.name)}</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:2px;">${esc(best.r.short)} · ${best.gross} (${fmtDiff(best.toPar)}) · ${best.pts} pts</div>
+        </div>
+        <span style="color:var(--good);font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;">${fmtDiff(best.diff)}</span>
+      </div>
+    </div>`;
+  }
+
+  // ─── Schedule (full list, condensed) ───
+  if (S.subTab !== 'players') {
+    h += `<div class="sec-h"><span>📅 Schedule</span><span style="color:var(--dim);font-weight:500;text-transform:none;">Tap a round</span></div>`;
+    h += renderRoundList();
+  } else {
+    h += `<div class="sec-h"><span>👥 All Players</span></div>`;
+    h += renderAllPlayersList();
+  }
+
+  h += `<div class="dash-sub-toggle">
+    <button class="${S.subTab!=='players'?'sel':''}" onclick="go('home',{subTab:'standings'})">📅 Schedule</button>
+    <button class="${S.subTab==='players'?'sel':''}" onclick="go('home',{subTab:'players'})">👥 All Players</button>
+  </div>`;
+
+  h += `<div class="foot">Trip ${completed}/${ROUNDS.length} rounds done · ${stats.eg} eagles · ${stats.bd} birdies<br>Quota = 36 − Course Handicap<br>Bogey 1 · Par 2 · Birdie 4 · Eagle 8</div>`;
   return h;
+}
+
+function renderRoundStreak(wins) {
+  // Renders 5 mini boxes showing each round's outcome
+  let html = '';
+  ROUNDS.forEach((r, i) => {
+    const w = wins[i];
+    let cls = 'rs-box', txt = `R${i+1}`;
+    if (w === 'T1') { cls += ' rs-t1'; }
+    else if (w === 'T2') { cls += ' rs-t2'; }
+    else if (w === 'tie') { cls += ' rs-tie'; }
+    else { cls += ' rs-up'; }
+    html += `<div class="${cls}" title="${esc(r.short)}">${txt}</div>`;
+  });
+  return html;
 }
 function renderRoundList() {
   let h = `<div class="sec-h"><span>Schedule</span><span style="color:var(--dim);font-weight:500;text-transform:none;">Tap to view</span></div>`;
