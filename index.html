@@ -293,20 +293,36 @@ body { padding-bottom:calc(74px + env(safe-area-inset-bottom,0)) !important; }
 .hs-strip .hcell .num { font-size:9px; color:var(--dim); display:block; }
 .hs-strip .hcell.act .num { color:var(--bg); }
 
-.hs-plr { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:8px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; }
+.hs-plr { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; }
 .hs-plr .hs-nm { display:flex; flex-direction:column; gap:2px; min-width:0; }
 .hs-plr .hs-nm .n { font-size:15px; font-weight:600; display:flex; align-items:center; gap:6px; }
 .hs-plr .hs-nm .m { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; }
-.hs-plr .hs-step { display:flex; align-items:center; gap:4px; }
-.hs-plr .hs-step button { width:40px; height:40px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:18px; font-weight:700; cursor:pointer; font-family:inherit; }
-.hs-plr .hs-step button:active { background:var(--card2); }
-.hs-plr .hs-step .hs-val { min-width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; background:var(--bg2); border:2px solid var(--border); }
+.hs-plr .hs-step { display:flex; align-items:center; gap:6px; }
+.hs-plr .hs-step button { width:48px; height:60px; border-radius:12px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:24px; font-weight:700; cursor:pointer; font-family:inherit; padding:0; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.hs-plr .hs-step button:active { background:var(--card2); transform:scale(.95); }
+.hs-plr .hs-step .hs-val { min-width:64px; height:60px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; background:var(--bg2); border:2px solid var(--border); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+.hs-plr .hs-step .hs-val:active { transform:scale(.95); }
 .hs-plr .hs-step .hs-val.empty { color:var(--dim); border-style:dashed; }
 .hs-plr .hs-step .hs-val.eagle { background:rgba(251,191,36,.2); color:var(--warn); border-color:var(--warn); }
 .hs-plr .hs-step .hs-val.birdie { background:rgba(74,222,128,.15); color:var(--good); border-color:var(--good); }
 .hs-plr .hs-step .hs-val.par { color:var(--text); border-color:var(--text); }
 .hs-plr .hs-step .hs-val.bogey { color:var(--muted); }
 .hs-plr .hs-step .hs-val.bad { color:var(--bad); }
+
+/* Inline numpad modal */
+.np-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; display:flex; align-items:flex-end; justify-content:center; padding-bottom:env(safe-area-inset-bottom,0); -webkit-tap-highlight-color:transparent; }
+.np-sheet { background:var(--card); border-top:1px solid var(--border); border-radius:18px 18px 0 0; padding:18px 14px calc(18px + env(safe-area-inset-bottom,0)); width:100%; max-width:560px; box-shadow:0 -8px 30px rgba(0,0,0,.5); }
+.np-hdr { text-align:center; margin-bottom:14px; }
+.np-hdr .pn { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+.np-hdr .ti { font-size:18px; font-weight:700; margin-top:4px; }
+.np-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.np-grid button { padding:18px 0; border-radius:12px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:22px; font-weight:700; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.np-grid button:active { background:var(--card2); transform:scale(.95); }
+.np-grid button.np-par { border-color:var(--text); }
+.np-grid button.np-bd { border-color:var(--good); color:var(--good); }
+.np-grid button.np-eg { border-color:var(--warn); color:var(--warn); }
+.np-grid button.np-clear { background:transparent; color:var(--bad); border-color:var(--bad); font-size:14px; }
+.np-grid button.np-cancel { background:transparent; color:var(--muted); border:none; font-size:14px; grid-column:span 2; }
 
 .hs-nav { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
 .hs-nav button { padding:14px; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
@@ -1362,15 +1378,66 @@ async function stepScore(pid, i, delta) {
   await setScore(rId, pid, i, next);
 }
 
-async function showNumPad(pid, i) {
+function showNumPad(pid, i) {
   if (S.locks[S.rId]) { alert('Round is locked.'); return; }
-  const cur = ((S.scores[S.rId]||{})[pid] || [])[i] || '';
-  const v = prompt('Enter score for hole ' + (i+1), cur);
-  if (v === null) return;
-  if (v === '' || v === '0') { await setScore(S.rId, pid, i, ''); return; }
-  const n = parseInt(v);
-  if (!(n >= 1 && n <= 15)) return;
-  await setScore(S.rId, pid, i, n);
+  if (!isAdmin()) {
+    const myPid = userPlayerId();
+    if (!myPid) { alert('Read-only mode.'); return; }
+    const r = ROUNDS.find(x => x.id === S.rId);
+    const myGroup = r && r.groups.find(g => g.includes(myPid));
+    if (!myGroup || !myGroup.includes(pid)) { alert('You can only score players in your own group.'); return; }
+  }
+  S._numpad = { pid, hole: i };
+  renderNumpad();
+}
+function closeNumPad() { S._numpad = null; renderNumpad(); }
+async function numpadSet(v) {
+  const np = S._numpad; if (!np) return;
+  S._numpad = null;
+  renderNumpad();
+  await setScore(S.rId, np.pid, np.hole, v);
+}
+function renderNumpad() {
+  let el = document.getElementById('numpad-root');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'numpad-root';
+    document.body.appendChild(el);
+  }
+  if (!S._numpad) { el.innerHTML = ''; return; }
+  const { pid, hole } = S._numpad;
+  const p = PMAP[pid];
+  const r = ROUNDS.find(x => x.id === S.rId);
+  const par = parsFor(r.id)[hole];
+  // Build a row of common scores: par-2 to par+5
+  const opts = [];
+  for (let v = Math.max(1, par - 2); v <= par + 5; v++) opts.push(v);
+  const cur = ((S.scores[r.id]||{})[pid] || [])[hole] || '';
+  let btns = '';
+  opts.forEach(v => {
+    const d = v - par;
+    let extra = '', lbl = String(v);
+    if (d === 0) { extra = 'np-par'; lbl = `${v}<br><span style="font-size:10px;font-weight:500;color:var(--dim);">PAR</span>`; }
+    else if (d === -1) { extra = 'np-bd'; lbl = `${v}<br><span style="font-size:10px;font-weight:500;">BIRDIE</span>`; }
+    else if (d <= -2) { extra = 'np-eg'; lbl = `${v}<br><span style="font-size:10px;font-weight:500;">EAGLE</span>`; }
+    else if (d === 1) { lbl = `${v}<br><span style="font-size:10px;font-weight:500;color:var(--dim);">BOGEY</span>`; }
+    else if (d === 2) { lbl = `${v}<br><span style="font-size:10px;font-weight:500;color:var(--dim);">DBL</span>`; }
+    else if (d >= 3) { lbl = `${v}<br><span style="font-size:10px;font-weight:500;color:var(--dim);">+${d}</span>`; }
+    btns += `<button class="${extra}" onclick="numpadSet(${v})">${lbl}</button>`;
+  });
+  el.innerHTML = `<div class="np-overlay" onclick="if(event.target===this)closeNumPad()">
+    <div class="np-sheet">
+      <div class="np-hdr">
+        <div class="pn">${esc(p.name)} · Hole ${hole+1} · Par ${par}</div>
+        <div class="ti">${cur ? 'Current: ' + cur : 'Tap a score'}</div>
+      </div>
+      <div class="np-grid">
+        ${btns}
+        <button class="np-clear" onclick="numpadSet(null)">Clear</button>
+        <button class="np-cancel" onclick="closeNumPad()">Cancel</button>
+      </div>
+    </div>
+  </div>`;
 }
 function scCell(rId, pid, i, v, par) {
   const sv = parseInt(v);
