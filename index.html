@@ -125,6 +125,25 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .row { display:flex; gap:10px; }
 .row > * { flex:1; }
 
+/* Login screen */
+.login-wrap { min-height:90vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.login-card { width:100%; max-width:360px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 22px; text-align:center; box-shadow:var(--shadow); }
+.login-logo { font-size:46px; margin-bottom:6px; }
+.login-h { font-size:20px; font-weight:700; margin:0 0 4px; }
+.login-sub { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:22px; }
+.login-form { margin-bottom:18px; }
+.login-inp { width:100%; padding:13px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:16px; font-family:inherit; outline:none; margin-bottom:10px; text-align:center; letter-spacing:.5px; }
+.login-inp:focus { border-color:var(--t1); }
+.login-btn { width:100%; padding:13px; background:var(--t1); color:var(--bg); border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; text-transform:uppercase; letter-spacing:.7px; }
+.login-btn:active { background:var(--t1d); }
+.login-err { margin-top:10px; padding:8px; background:rgba(248,113,113,.1); color:var(--bad); border-radius:6px; font-size:12px; }
+.login-hint { font-size:12px; color:var(--muted); line-height:1.6; padding-top:14px; border-top:1px solid var(--border); }
+
+/* User pill in top bar */
+.user-pill { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:var(--bg2); border:1px solid var(--border); border-radius:14px; font-size:11px; color:var(--text); cursor:pointer; font-family:inherit; }
+.user-pill .ud { width:6px; height:6px; border-radius:50%; background:var(--good); }
+.user-pill.admin .ud { background:var(--warn); }
+
 /* Round / Group switcher on score page */
 .gsw-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:600; letter-spacing:.6px; margin:8px 4px 6px; }
 .gsw { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:10px; padding-bottom:4px; }
@@ -261,6 +280,77 @@ async function syncFromFB() {
 let S = { view:'home', rId:null, gIdx:null, pId:null, scores:{}, pars:{}, chcp:{}, locks:{}, subTab:'standings', scHole:0, scMode:'hole' };
 try { const lg = JSON.parse(localStorage.getItem('mbq.lastGroup')||'null'); if (lg && lg.rId) { S._lastGroup = lg; } } catch(e){}
 try { const m = localStorage.getItem('mbq.scMode'); if (m==='card'||m==='hole') S.scMode = m; } catch(e){}
+try { const u = localStorage.getItem('mbq.user'); if (u) S._user = u; } catch(e){}
+
+/* AUTH ─────────────────────────────────────────
+   Password = lastname123 OR nickname123 (case-insensitive)
+   admin123 = full admin access
+   ─────────────────────────────────────────── */
+function lastNameOf(p) {
+  return (p.full || '').split(' ').slice(-1)[0].toLowerCase();
+}
+function authMatch(pw) {
+  if (!pw) return null;
+  const k = pw.trim().toLowerCase().replace(/\s+/g,'');
+  if (k === 'admin123') return 'admin';
+  // Disambiguate Biedrzycki (Bwu and Bob both): force them to use nicknames
+  if (k === 'biedrzycki123') return null;
+  for (const p of PLAYERS) {
+    if (k === lastNameOf(p) + '123') return p.id;
+    if (k === p.name.toLowerCase() + '123') return p.id;
+    if (k === p.id.toLowerCase() + '123') return p.id;
+  }
+  return null;
+}
+function currentUser() {
+  // Returns {kind:'admin'} | {kind:'player', p, pid} | null
+  if (!S._user) return null;
+  if (S._user === 'admin') return { kind:'admin' };
+  const p = PMAP[S._user];
+  if (!p) return null;
+  return { kind:'player', p, pid:p.id };
+}
+function isAdmin() { const u = currentUser(); return !!(u && u.kind === 'admin'); }
+function userPlayerId() { const u = currentUser(); return u && u.kind==='player' ? u.pid : null; }
+function userCanEditGroup(rId, gIdx) {
+  if (isAdmin()) return true;
+  const pid = userPlayerId();
+  if (!pid) return false;
+  const r = ROUNDS.find(x => x.id === rId);
+  if (!r || !r.groups[gIdx]) return false;
+  return r.groups[gIdx].includes(pid);
+}
+function loginAs(pw) {
+  const result = authMatch(pw);
+  if (!result) { return false; }
+  S._user = result;
+  try { localStorage.setItem('mbq.user', result); } catch(e){}
+  // Default last group to logged-in player's first round/group
+  if (result !== 'admin' && !S._lastGroup) {
+    for (const r of ROUNDS) {
+      const gIdx = r.groups.findIndex(g => g.includes(result));
+      if (gIdx >= 0) {
+        S._lastGroup = { rId:r.id, gIdx };
+        try { localStorage.setItem('mbq.lastGroup', JSON.stringify(S._lastGroup)); } catch(e){}
+        break;
+      }
+    }
+  }
+  S.view = 'home';
+  render();
+  return true;
+}
+function logout() {
+  S._user = null;
+  try { localStorage.removeItem('mbq.user'); } catch(e){}
+  render();
+}
+function userLabel() {
+  const u = currentUser();
+  if (!u) return '';
+  if (u.kind === 'admin') return 'Admin';
+  return u.p.name;
+}
 function courseHcp(pId) { if (S.chcp[pId] != null) return S.chcp[pId]; return Math.round(PMAP[pId].hi); }
 function quotaFor(pId) { return 36 - courseHcp(pId); }
 function parsFor(rId) { const p = S.pars[rId]; return (p && p.length === 18) ? p : DEFAULT_PAR; }
@@ -345,14 +435,41 @@ function fmtDiff(n) { if (n === 0) return 'E'; return (n > 0 ? '+' : '') + n; }
 function diffClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
 function render() {
   const app = document.getElementById('app');
+  if (!currentUser()) { app.innerHTML = renderLogin(); return; }
   let html = '';
   if      (S.view === 'home')   html = renderHome();
   else if (S.view === 'round')  html = renderRound();
   else if (S.view === 'group')  html = renderGroup();
   else if (S.view === 'player') html = renderPlayer();
-  else if (S.view === 'setup')  html = renderSetup();
+  else if (S.view === 'setup')  { if (isAdmin()) html = renderSetup(); else html = renderHome(); }
   else html = renderHome();
   app.innerHTML = html + renderBottomNav();
+}
+function renderLogin() {
+  setTimeout(() => { const el = document.getElementById('pwIn'); if (el) el.focus(); }, 50);
+  const err = S._loginErr ? `<div class="login-err">Wrong password — try again.</div>` : '';
+  return `<div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">🏆</div>
+      <h1 class="login-h">MB '26 Quota Cup</h1>
+      <div class="login-sub">Myrtle Beach · April 23–26</div>
+      <div class="login-form">
+        <input id="pwIn" class="login-inp" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')tryLogin()">
+        <button class="login-btn" onclick="tryLogin()">Sign In</button>
+        ${err}
+      </div>
+      <div class="login-hint">
+        <strong>Players:</strong> your last name + 123<br>
+        <span style="color:var(--dim);">e.g. modica123, scott123, pisano123</span><br>
+        <span style="color:var(--dim);">(Bwu &amp; Bob: use bwu123 / bob123)</span>
+      </div>
+    </div>
+  </div>`;
+}
+function tryLogin() {
+  const v = document.getElementById('pwIn').value;
+  const ok = loginAs(v);
+  if (!ok) { S._loginErr = true; render(); }
 }
 function renderBottomNav() {
   const atHome = S.view === 'home';
@@ -360,14 +477,29 @@ function renderBottomNav() {
   const atAdmin = S.view === 'setup';
   const atRounds = atHome && S.subTab === 'standings';
   const atPlayers = atHome && S.subTab === 'players';
+  const admin = isAdmin();
 
-  // Score button target: last group > first active round > first round
+  // Score button target: last group > logged-in player's first group > first active round
   let scoreHandler = `pickScoreTarget()`;
+  const myPid = userPlayerId();
   if (S._lastGroup) {
     scoreHandler = `go('group',{rId:'${S._lastGroup.rId}',gIdx:${S._lastGroup.gIdx}})`;
+  } else if (myPid) {
+    // Find first round/group containing this player
+    for (const r of ROUNDS) {
+      const gIdx = r.groups.findIndex(g => g.includes(myPid));
+      if (gIdx >= 0) {
+        scoreHandler = `go('group',{rId:'${r.id}',gIdx:${gIdx}})`;
+        break;
+      }
+    }
   }
 
-  return `<div class="bnav">
+  const adminBtn = admin ? `<button class="bnav-btn ${atAdmin?'act':''}" onclick="go('setup')">
+      <span class="bn-ic">⚙️</span><span class="bn-lbl">Admin</span>
+    </button>` : '';
+
+  return `<div class="bnav" style="grid-template-columns:${admin?'1fr 1fr 1.2fr 1fr':'1fr 1fr 1.2fr'};">
     <button class="bnav-btn ${atRounds?'act':''}" onclick="go('home',{subTab:'standings'})">
       <span class="bn-ic">🏆</span><span class="bn-lbl">Rounds</span>
     </button>
@@ -377,9 +509,7 @@ function renderBottomNav() {
     <button class="bnav-btn bnav-score ${atScore?'act':''}" onclick="${scoreHandler}">
       <span class="bn-ic">✏️</span><span class="bn-lbl">Score</span>
     </button>
-    <button class="bnav-btn ${atAdmin?'act':''}" onclick="go('setup')">
-      <span class="bn-ic">⚙️</span><span class="bn-lbl">Admin</span>
-    </button>
+    ${adminBtn}
   </div>`;
 }
 function pickScoreTarget() {
@@ -395,7 +525,10 @@ function topbar(backTo, title) {
     const optsStr = JSON.stringify(backTo.o || {}).replace(/"/g, '&quot;');
     back = `<button class="backbtn" onclick="go('${backTo.v}',${optsStr})">← Back</button>`;
   }
-  return `<div class="top"><h1><span class="cup">🏆</span> ${title}</h1>${back}</div>`;
+  const u = currentUser();
+  const adminCls = u && u.kind === 'admin' ? 'admin' : '';
+  const userPill = u ? `<button class="user-pill ${adminCls}" onclick="if(confirm('Log out?'))logout()"><span class="ud"></span>${esc(userLabel())}</button>` : '';
+  return `<div class="top"><h1><span class="cup">🏆</span> ${title}</h1>${back || userPill}</div>`;
 }
 function renderHome() {
   const t1 = tripScore(1), t2 = tripScore(2);
@@ -584,6 +717,9 @@ function renderGroup() {
   h += `</div>`;
 
   if (locked) h += `<div class="note" style="text-align:center;">🔒 Round is locked. Unlock in Admin to edit scores.</div>`;
+  else if (!userCanEditGroup(r.id, S.gIdx)) {
+    h += `<div class="note" style="text-align:center;background:rgba(138,146,168,.1);border-color:var(--border);color:var(--muted);">👁️ View only — switch to your own group to edit scores.</div>`;
+  }
   h += `<div class="sc-mode-toggle">
     <button class="${S.scMode==='hole'?'active':''}" onclick="setScMode('hole')">Hole by Hole</button>
     <button class="${S.scMode==='card'?'active':''}" onclick="setScMode('card')">Full Scorecard</button>
@@ -780,6 +916,13 @@ function scCell(rId, pid, i, v, par) {
 }
 async function setScore(rId, pid, i, val) {
   if (S.locks[rId]) { alert('Round is locked. Unlock in Admin to edit.'); return; }
+  if (!isAdmin()) {
+    const myPid = userPlayerId();
+    if (!myPid) { alert('Read-only mode.'); return; }
+    const r = ROUNDS.find(x => x.id === rId);
+    const myGroup = r && r.groups.find(g => g.includes(myPid));
+    if (!myGroup || !myGroup.includes(pid)) { alert('You can only score players in your own group.'); return; }
+  }
   const v = parseInt(val);
   if (!S.scores[rId]) S.scores[rId] = {};
   if (!S.scores[rId][pid]) S.scores[rId][pid] = new Array(18).fill('');
