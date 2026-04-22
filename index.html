@@ -572,14 +572,15 @@ function quotaDiffFor(pId, rId) {
   return {diff: r.pts - q, pts:r.pts, q, holes:r.holes, gross:r.gross, toPar:r.toPar, strokes:r.strokes, net: r.gross - r.strokes};
 }
 function teamRoundScore(tNum, rId) {
-  let total = 0, any = false, allFull = true;
+  let total = 0, pts = 0, any = false, allFull = true;
   PLAYERS.filter(p => p.t === tNum).forEach(p => {
-    const {diff, holes} = quotaDiffFor(p.id, rId);
-    if (holes > 0) any = true;
-    if (holes < 18) allFull = false;
-    total += diff;
+    const x = quotaDiffFor(p.id, rId);
+    if (x.holes > 0) any = true;
+    if (x.holes < 18) allFull = false;
+    total += x.diff;
+    pts += x.pts;
   });
-  return {total, complete: allFull, any};
+  return {total, pts, complete: allFull, any};
 }
 function roundStatus(rId) {
   const t1 = teamRoundScore(1, rId), t2 = teamRoundScore(2, rId);
@@ -588,6 +589,7 @@ function roundStatus(rId) {
   return 'active';
 }
 function tripScore(tNum) { let total = 0; ROUNDS.forEach(r => { total += teamRoundScore(tNum, r.id).total; }); return total; }
+function tripPoints(tNum) { let pts = 0; ROUNDS.forEach(r => { pts += teamRoundScore(tNum, r.id).pts; }); return pts; }
 
 /* ── Dashboard helpers ─────────────────────────── */
 function activeRound() { return ROUNDS.find(r => roundStatus(r.id) === 'active'); }
@@ -653,8 +655,8 @@ function teamWinsByRound() {
   // Returns array of 'T1' | 'T2' | 'tie' | null (null = upcoming)
   return ROUNDS.map(r => {
     if (roundStatus(r.id) === 'upcoming') return null;
-    const t1 = teamRoundScore(1, r.id).total;
-    const t2 = teamRoundScore(2, r.id).total;
+    const t1 = teamRoundScore(1, r.id).pts;
+    const t2 = teamRoundScore(2, r.id).pts;
     if (t1 > t2) return 'T1';
     if (t2 > t1) return 'T2';
     return 'tie';
@@ -820,8 +822,9 @@ function topbar(backTo, title) {
   return `<div class="top"><h1><span class="cup">🏆</span> ${title}</h1>${back || userPill}</div>`;
 }
 function renderHome() {
-  const t1 = tripScore(1), t2 = tripScore(2);
-  const leading1 = t1 > t2, leading2 = t2 > t1;
+  const t1Pts = tripPoints(1), t2Pts = tripPoints(2);
+  const t1Diff = tripScore(1), t2Diff = tripScore(2);
+  const leading1 = t1Pts > t2Pts, leading2 = t2Pts > t1Pts;
   const completed = ROUNDS.filter(r => roundStatus(r.id) === 'done').length;
   const live = activeRound();
   const last = lastCompletedRound();
@@ -835,28 +838,29 @@ function renderHome() {
   const wins = teamWinsByRound();
   const t1Wins = wins.filter(w => w === 'T1').length;
   const t2Wins = wins.filter(w => w === 'T2').length;
-  const ties = wins.filter(w => w === 'tie').length;
+  const hasAnyPlay = t1Pts > 0 || t2Pts > 0;
   let leadTxt = '';
-  if (t1 === t2 && (t1 !== 0 || completed > 0)) leadTxt = '<span style="color:var(--warn);">All Square</span>';
-  else if (leading1) leadTxt = `<span style="color:var(--t1);">Team 1 leads by ${t1-t2}</span>`;
-  else if (leading2) leadTxt = `<span style="color:var(--t2);">Team 2 leads by ${t2-t1}</span>`;
-  else leadTxt = '<span style="color:var(--dim);">Tee it up</span>';
+  if (!hasAnyPlay) leadTxt = '<span style="color:var(--dim);">Tee it up</span>';
+  else if (t1Pts === t2Pts) leadTxt = '<span style="color:var(--warn);">All Square</span>';
+  else if (leading1) leadTxt = `<span style="color:var(--t1);">Team 1 leads by ${t1Pts-t2Pts} pts</span>`;
+  else leadTxt = `<span style="color:var(--t2);">Team 2 leads by ${t2Pts-t1Pts} pts</span>`;
   h += `<div class="dash-hero">
     <div class="dash-hello">Hey ${esc(greeting)} 👋</div>
     <div class="dash-status">${leadTxt}</div>
     <div class="scoreboard" style="margin:14px 0 0;">
       <div class="team-card t1 ${leading1?'leading':''}">
         <div class="lbl">Team 1</div>
-        <div class="big">${fmtDiff(t1)}</div>
-        <div class="sub">${t1Wins} round${t1Wins===1?'':'s'} won</div>
+        <div class="big">${t1Pts}</div>
+        <div class="sub">${t1Wins} round${t1Wins===1?'':'s'} won · ${fmtDiff(t1Diff)} vs Q</div>
       </div>
       <div class="team-card t2 ${leading2?'leading':''}">
         <div class="lbl">Team 2</div>
-        <div class="big">${fmtDiff(t2)}</div>
-        <div class="sub">${t2Wins} round${t2Wins===1?'':'s'} won</div>
+        <div class="big">${t2Pts}</div>
+        <div class="sub">${t2Wins} round${t2Wins===1?'':'s'} won · ${fmtDiff(t2Diff)} vs Q</div>
       </div>
     </div>
     <div class="dash-streak">${renderRoundStreak(wins)}</div>
+    <div style="text-align:center;font-size:10px;color:var(--dim);margin-top:10px;letter-spacing:.4px;">Total quota points earned · Highest wins</div>
   </div>`;
 
   // ─── Resume scoring (if applicable) ───
@@ -878,8 +882,8 @@ function renderHome() {
 
   // ─── Live now ───
   if (live) {
-    const lt1 = teamRoundScore(1, live.id).total;
-    const lt2 = teamRoundScore(2, live.id).total;
+    const lts1 = teamRoundScore(1, live.id);
+    const lts2 = teamRoundScore(2, live.id);
     const groupProg = groupProgress(live);
     const leaders = liveRoundLeaders(live.id).slice(0, 3);
     h += `<div class="sec-h"><span>🟢 Live Now</span><span style="color:var(--good);font-weight:600;text-transform:none;">${esc(live.short)}</span></div>`;
@@ -890,8 +894,8 @@ function renderHome() {
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(live.date)} · ${esc(live.time)}</div>
         </div>
         <div class="dash-live-tm">
-          <span class="dash-live-t t1">T1 <b>${fmtDiff(lt1)}</b></span>
-          <span class="dash-live-t t2">T2 <b>${fmtDiff(lt2)}</b></span>
+          <span class="dash-live-t t1">T1 <b>${lts1.pts}</b> pts</span>
+          <span class="dash-live-t t2">T2 <b>${lts2.pts}</b> pts</span>
         </div>
       </div>
       <div class="dash-live-groups">`;
@@ -934,9 +938,9 @@ function renderHome() {
 
   // ─── Last completed round recap ───
   if (last) {
-    const dt1 = teamRoundScore(1, last.id).total;
-    const dt2 = teamRoundScore(2, last.id).total;
-    const winner = dt1 > dt2 ? 'T1' : (dt2 > dt1 ? 'T2' : null);
+    const dts1 = teamRoundScore(1, last.id);
+    const dts2 = teamRoundScore(2, last.id);
+    const winner = dts1.pts > dts2.pts ? 'T1' : (dts2.pts > dts1.pts ? 'T2' : null);
     const tops = topPerformers(last.id, 1);
     const top = tops[0] || null;
     h += `<div class="sec-h"><span>📜 Last Round</span><span style="color:var(--dim);font-weight:500;text-transform:none;">${esc(last.short)}</span></div>`;
@@ -944,15 +948,15 @@ function renderHome() {
       <div class="dr-row">
         <div class="dr-side ${winner==='T1'?'win':''} t1">
           <div class="lb">Team 1</div>
-          <div class="vl">${fmtDiff(dt1)}</div>
+          <div class="vl">${dts1.pts}</div>
         </div>
         <div class="dr-vs">${winner ? winner+' WINS' : 'TIED'}</div>
         <div class="dr-side ${winner==='T2'?'win':''} t2">
           <div class="lb">Team 2</div>
-          <div class="vl">${fmtDiff(dt2)}</div>
+          <div class="vl">${dts2.pts}</div>
         </div>
       </div>
-      ${top ? `<div class="dr-top">⭐ <b>${esc(top.p.name)}</b> led the day at ${fmtDiff(top.diff)}</div>` : ''}
+      ${top ? `<div class="dr-top">⭐ <b>${esc(top.p.name)}</b> led the day at ${fmtDiff(top.diff)} vs quota</div>` : ''}
     </div>`;
   }
 
@@ -1285,7 +1289,7 @@ function renderRoundList() {
     const t1 = teamRoundScore(1, r.id), t2 = teamRoundScore(2, r.id);
     const pillCls = st === 'done' ? 'done' : (st === 'active' ? 'live' : '');
     const pillTxt = st === 'done' ? 'FINAL' : (st === 'active' ? 'LIVE' : 'UPCOMING');
-    const leads = t1.total > t2.total ? 'T1 wins' : (t2.total > t1.total ? 'T2 wins' : 'Tied');
+    const leads = t1.pts > t2.pts ? 'T1 wins' : (t2.pts > t1.pts ? 'T2 wins' : 'Tied');
     h += `<div class="round-card ${st}" onclick="go('round',{rId:'${r.id}'})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -1296,8 +1300,8 @@ function renderRoundList() {
       </div>`;
     if (st !== 'upcoming') {
       h += `<div class="rscore">
-        <div class="ts"><span class="ts-1">T1 ${fmtDiff(t1.total)}</span><span class="ts-2">T2 ${fmtDiff(t2.total)}</span></div>
-        <div class="rw">${st==='done'?leads:(t1.total>t2.total?'T1 leads':(t2.total>t1.total?'T2 leads':'Tied'))}</div>
+        <div class="ts"><span class="ts-1">T1 ${t1.pts}</span><span class="ts-2">T2 ${t2.pts}</span></div>
+        <div class="rw">${st==='done'?leads:(t1.pts>t2.pts?'T1 leads':(t2.pts>t1.pts?'T2 leads':'Tied'))}</div>
       </div>`;
     }
     h += `</div>`;
@@ -1361,13 +1365,15 @@ function renderRound() {
       <span class="pill ${pillCls}">${pillTxt}</span>
     </div>
     <div class="scoreboard" style="margin:0;">
-      <div class="team-card t1 ${t1.total>t2.total?'leading':''}">
+      <div class="team-card t1 ${t1.pts>t2.pts?'leading':''}">
         <div class="lbl">Team 1</div>
-        <div class="big">${fmtDiff(t1.total)}</div>
+        <div class="big">${t1.pts}</div>
+        <div class="sub">${fmtDiff(t1.total)} vs Q</div>
       </div>
-      <div class="team-card t2 ${t2.total>t1.total?'leading':''}">
+      <div class="team-card t2 ${t2.pts>t1.pts?'leading':''}">
         <div class="lbl">Team 2</div>
-        <div class="big">${fmtDiff(t2.total)}</div>
+        <div class="big">${t2.pts}</div>
+        <div class="sub">${fmtDiff(t2.total)} vs Q</div>
       </div>
     </div>
   </div>`;
