@@ -1205,10 +1205,10 @@ function renderLboard() {
 
   // Default sort per mode
   if (!S.lbSort) {
-    sort = mode === 'scoring' ? 'topar' : 'quota';
+    sort = mode === 'scoring' ? 'gross' : 'quota';
   } else {
     // If user switched modes without picking a sort, use the right default
-    if (mode === 'scoring' && !['gross','net','topar'].includes(sort)) sort = 'topar';
+    if (mode === 'scoring' && !['gross','net','topar'].includes(sort)) sort = 'gross';
     if (mode === 'quota'   && !['qtarget','qpts','quota'].includes(sort)) sort = 'quota';
   }
 
