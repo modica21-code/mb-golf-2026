@@ -1019,6 +1019,18 @@ function renderLboard() {
       // For trip net of in-progress: only count completed rounds (otherwise net inflates)
       // Show "incomplete" indicator
       const allDone = roundsPlayed === ROUNDS.length;
+      // Find the active (in-progress) round and how many holes done in it
+      let activeR = null, activeHoles = 0;
+      for (const r of ROUNDS) {
+        const sc = (S.scores[r.id]||{})[p.id] || [];
+        const hCount = sc.filter(x => parseInt(x)).length;
+        if (hCount > 0 && hCount < 18) { activeR = r; activeHoles = hCount; break; }
+      }
+      let thruTxt;
+      if (roundsPlayed === ROUNDS.length) thruTxt = 'Final';
+      else if (activeR) thruTxt = `${activeHoles}/18`;
+      else if (roundsPlayed > 0) thruTxt = `${roundsPlayed}r done`;
+      else thruTxt = '—';
       return {
         p, ch,
         gross: g,
@@ -1027,7 +1039,7 @@ function renderLboard() {
         holes,
         roundsPlayed,
         allDone,
-        thru: roundsPlayed === ROUNDS.length ? 'Final' : (roundsPlayed > 0 ? `${roundsPlayed}r done` : (holes > 0 ? `In R${ROUNDS.findIndex(r=>(S.scores[r.id]||{})[p.id])+1}` : 'Not started')),
+        thru: thruTxt,
         qPts, qDiff: roundsPlayed > 0 ? qDiff : null
       };
     } else {
