@@ -842,6 +842,19 @@ function renderHome() {
   const u = currentUser();
   const greeting = u && u.kind === 'player' ? u.p.name : (u ? 'Admin' : 'there');
 
+  // Team quota targets — accumulate by rounds played (or full trip if nothing played yet)
+  const teamQuotaPerRound = (tNum) => PLAYERS.filter(p => p.t === tNum).reduce((s,p) => s + quotaFor(p.id), 0);
+  const t1QPR = teamQuotaPerRound(1);
+  const t2QPR = teamQuotaPerRound(2);
+  let t1RoundsTouched = 0, t2RoundsTouched = 0;
+  ROUNDS.forEach(r => {
+    const s1 = teamRoundScore(1, r.id), s2 = teamRoundScore(2, r.id);
+    if (s1.any) t1RoundsTouched++;
+    if (s2.any) t2RoundsTouched++;
+  });
+  const t1Qt = t1QPR * (t1RoundsTouched || ROUNDS.length);
+  const t2Qt = t2QPR * (t2RoundsTouched || ROUNDS.length);
+
   let h = topbar(null, 'MB \'26 Quota Cup');
 
   // ─── Hero scoreboard ───
@@ -860,17 +873,17 @@ function renderHome() {
     <div class="scoreboard" style="margin:14px 0 0;">
       <div class="team-card t1 ${leading1?'leading':''}">
         <div class="lbl">Team 1</div>
-        <div class="big">${t1Pts}</div>
+        <div class="big">${t1Pts}<span style="font-size:18px;color:var(--dim);font-weight:500;">/${t1Qt}</span></div>
         <div class="sub">${t1Wins} round${t1Wins===1?'':'s'} won · ${fmtDiff(t1Diff)} vs Q</div>
       </div>
       <div class="team-card t2 ${leading2?'leading':''}">
         <div class="lbl">Team 2</div>
-        <div class="big">${t2Pts}</div>
+        <div class="big">${t2Pts}<span style="font-size:18px;color:var(--dim);font-weight:500;">/${t2Qt}</span></div>
         <div class="sub">${t2Wins} round${t2Wins===1?'':'s'} won · ${fmtDiff(t2Diff)} vs Q</div>
       </div>
     </div>
     <div class="dash-streak">${renderRoundStreak(wins)}</div>
-    <div style="text-align:center;font-size:10px;color:var(--dim);margin-top:10px;letter-spacing:.4px;">Total quota points earned · Highest wins</div>
+    <div style="text-align:center;font-size:10px;color:var(--dim);margin-top:10px;letter-spacing:.4px;">Points earned / Quota target · Higher wins</div>
   </div>`;
 
   // ─── Resume scoring (if applicable) ───
@@ -1056,15 +1069,29 @@ function renderLboard() {
   let h = topbar(null, 'Leaderboards');
 
   // Team scoreboard at top — context varies by scope
-  let t1Pts, t2Pts, t1Diff, t2Diff, t1Label, t2Label, leadLine, subLabel;
+  let t1Pts, t2Pts, t1Diff, t2Diff, t1Qt, t2Qt, leadLine, subLabel;
+  const teamQuotaPerRound = (tNum) => PLAYERS.filter(p => p.t === tNum).reduce((s,p) => s + quotaFor(p.id), 0);
+  const t1QPR = teamQuotaPerRound(1);
+  const t2QPR = teamQuotaPerRound(2);
   if (scope === 'trip') {
     t1Pts = tripPoints(1); t2Pts = tripPoints(2);
     t1Diff = tripScore(1); t2Diff = tripScore(2);
+    // Accumulated quota target = per-round target × rounds with any play; before trip starts, show full-trip target
+    let t1RoundsTouched = 0, t2RoundsTouched = 0;
+    ROUNDS.forEach(r => {
+      const s1 = teamRoundScore(1, r.id), s2 = teamRoundScore(2, r.id);
+      if (s1.any) t1RoundsTouched++;
+      if (s2.any) t2RoundsTouched++;
+    });
+    t1Qt = t1QPR * (t1RoundsTouched || ROUNDS.length);
+    t2Qt = t2QPR * (t2RoundsTouched || ROUNDS.length);
     subLabel = 'Trip Total';
   } else {
     const s1 = teamRoundScore(1, scope), s2 = teamRoundScore(2, scope);
     t1Pts = s1.pts; t2Pts = s2.pts;
     t1Diff = s1.total; t2Diff = s2.total;
+    t1Qt = t1QPR;
+    t2Qt = t2QPR;
     const r = ROUNDS.find(x => x.id === scope);
     subLabel = r ? r.short : 'Round';
   }
@@ -1081,12 +1108,12 @@ function renderLboard() {
     <div class="scoreboard" style="margin:12px 0 0;">
       <div class="team-card t1 ${lead1?'leading':''}">
         <div class="lbl">Team 1</div>
-        <div class="big">${t1Pts}</div>
+        <div class="big">${t1Pts}${t1Qt>0?'<span style="font-size:18px;color:var(--dim);font-weight:500;">/'+t1Qt+'</span>':''}</div>
         <div class="sub">${fmtDiff(t1Diff)} vs Q</div>
       </div>
       <div class="team-card t2 ${lead2?'leading':''}">
         <div class="lbl">Team 2</div>
-        <div class="big">${t2Pts}</div>
+        <div class="big">${t2Pts}${t2Qt>0?'<span style="font-size:18px;color:var(--dim);font-weight:500;">/'+t2Qt+'</span>':''}</div>
         <div class="sub">${fmtDiff(t2Diff)} vs Q</div>
       </div>
     </div>
