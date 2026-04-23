@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Rich navy background gradient -->
+    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#16365a"/>
+      <stop offset="60%" stop-color="#0a2540"/>
+      <stop offset="100%" stop-color="#051528"/>
+    </radialGradient>
+
+    <!-- Gold metallic gradient for trophy -->
+    <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f5d98a"/>
+      <stop offset="45%" stop-color="#d4b06a"/>
+      <stop offset="100%" stop-color="#8f7038"/>
+    </linearGradient>
+
+    <!-- Gold highlight for rim -->
+    <linearGradient id="goldRim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff0bf"/>
+      <stop offset="50%" stop-color="#e6c275"/>
+      <stop offset="100%" stop-color="#a88545"/>
+    </linearGradient>
+
+    <!-- Gold base -->
+    <linearGradient id="goldBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d4b06a"/>
+      <stop offset="100%" stop-color="#6b5228"/>
+    </linearGradient>
+
+    <!-- Golf ball gradient -->
+    <radialGradient id="ball" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#e8ecf2"/>
+      <stop offset="100%" stop-color="#b8bfc9"/>
+    </radialGradient>
+
+    <!-- Soft shadow under ball/cup -->
+    <radialGradient id="shadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Dimple pattern (small darker circles) -->
+    <radialGradient id="dimple" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a8b0bc" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#a8b0bc" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded-square navy background -->
+  <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)"/>
+
+  <!-- Subtle diagonal shine on background -->
+  <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)" opacity="0"/>
+
+  <!-- Trophy cup shadow on "ground" -->
+  <ellipse cx="256" cy="445" rx="120" ry="14" fill="url(#shadow)"/>
+
+  <!-- ============== TROPHY ============== -->
+
+  <!-- Trophy base (plate) -->
+  <rect x="176" y="415" width="160" height="22" rx="6" fill="url(#goldBase)"/>
+  <rect x="176" y="413" width="160" height="6" rx="3" fill="url(#goldRim)"/>
+
+  <!-- Trophy stem -->
+  <rect x="238" y="380" width="36" height="38" fill="url(#goldBase)"/>
+  <rect x="234" y="378" width="44" height="6" rx="2" fill="url(#goldRim)"/>
+
+  <!-- Trophy cup body -->
+  <path d="M 168 188
+           L 168 270
+           Q 168 345, 230 378
+           L 282 378
+           Q 344 345, 344 270
+           L 344 188
+           Z"
+        fill="url(#gold)" stroke="#5c4420" stroke-width="2"/>
+
+  <!-- Trophy cup rim (top band) -->
+  <rect x="160" y="176" width="192" height="22" rx="4" fill="url(#goldRim)" stroke="#5c4420" stroke-width="2"/>
+
+  <!-- Left handle -->
+  <path d="M 168 210
+           Q 118 210, 118 250
+           Q 118 298, 168 298"
+        fill="none" stroke="url(#gold)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M 168 215
+           Q 125 215, 125 250
+           Q 125 293, 168 293"
+        fill="none" stroke="url(#goldRim)" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Right handle -->
+  <path d="M 344 210
+           Q 394 210, 394 250
+           Q 394 298, 344 298"
+        fill="none" stroke="url(#gold)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M 344 215
+           Q 387 215, 387 250
+           Q 387 293, 344 293"
+        fill="none" stroke="url(#goldRim)" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- "MB" monogram on the cup -->
+  <text x="256" y="298" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="92" font-weight="900"
+        fill="#0a2540"
+        letter-spacing="-2">MB</text>
+
+  <!-- Subtle cup shine -->
+  <path d="M 186 210 Q 186 300, 220 370"
+        stroke="#fff2cc" stroke-width="3" fill="none" opacity="0.35" stroke-linecap="round"/>
+
+  <!-- ============== GOLF BALL popping out of cup ============== -->
+
+  <!-- Ball shadow on rim -->
+  <ellipse cx="256" cy="176" rx="58" ry="8" fill="#000" opacity="0.3"/>
+
+  <!-- Golf ball -->
+  <circle cx="256" cy="140" r="58" fill="url(#ball)" stroke="#8b94a3" stroke-width="1.5"/>
+
+  <!-- Dimples (pattern) -->
+  <g opacity="0.55">
+    <!-- Row 1 -->
+    <circle cx="236" cy="105" r="4.5" fill="#a8b0bc"/>
+    <circle cx="256" cy="100" r="4.5" fill="#a8b0bc"/>
+    <circle cx="276" cy="105" r="4.5" fill="#a8b0bc"/>
+    <!-- Row 2 -->
+    <circle cx="222" cy="122" r="4.5" fill="#a8b0bc"/>
+    <circle cx="243" cy="118" r="4.5" fill="#a8b0bc"/>
+    <circle cx="269" cy="118" r="4.5" fill="#a8b0bc"/>
+    <circle cx="290" cy="122" r="4.5" fill="#a8b0bc"/>
+    <!-- Row 3 -->
+    <circle cx="213" cy="140" r="4.5" fill="#a8b0bc"/>
+    <circle cx="233" cy="138" r="4.5" fill="#a8b0bc"/>
+    <circle cx="256" cy="135" r="4.5" fill="#a8b0bc"/>
+    <circle cx="279" cy="138" r="4.5" fill="#a8b0bc"/>
+    <circle cx="299" cy="140" r="4.5" fill="#a8b0bc"/>
+    <!-- Row 4 -->
+    <circle cx="222" cy="158" r="4.5" fill="#a8b0bc"/>
+    <circle cx="243" cy="156" r="4.5" fill="#a8b0bc"/>
+    <circle cx="269" cy="156" r="4.5" fill="#a8b0bc"/>
+    <circle cx="290" cy="158" r="4.5" fill="#a8b0bc"/>
+    <!-- Row 5 -->
+    <circle cx="236" cy="175" r="4.5" fill="#a8b0bc"/>
+    <circle cx="256" cy="180" r="4.5" fill="#a8b0bc"/>
+    <circle cx="276" cy="175" r="4.5" fill="#a8b0bc"/>
+  </g>
+
+  <!-- Ball highlight -->
+  <ellipse cx="236" cy="120" rx="16" ry="10" fill="#ffffff" opacity="0.6"/>
+
+  <!-- "'26" year tag at bottom -->
+  <text x="256" y="470" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="30" font-weight="700"
+        fill="#d4b06a"
+        letter-spacing="4">'26</text>
+</svg>
