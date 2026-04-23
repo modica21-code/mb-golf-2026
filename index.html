@@ -229,6 +229,50 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .stat-tbl .st-v.pos { color:var(--good); font-weight:700; }
 .stat-tbl .st-v.neg { color:var(--bad); font-weight:700; }
 
+/* Wagers view */
+.wg-hero { background:linear-gradient(160deg,#1a2a1f,#0a1a12); border:1px solid #2a5544; border-radius:16px; padding:18px 14px; margin-bottom:14px; text-align:center; }
+.wg-hero-t { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.4px; font-weight:700; }
+.wg-hero-amt { font-size:44px; font-weight:800; color:var(--warn); margin:4px 0; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
+.wg-hero-s { font-size:11px; color:var(--dim); margin-bottom:14px; }
+.wg-split { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+.wg-split-cell { background:rgba(0,0,0,0.25); border-radius:10px; padding:10px; }
+.wg-split-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
+.wg-split-v { font-size:20px; font-weight:700; color:var(--text); margin:2px 0; font-variant-numeric:tabular-nums; }
+.wg-split-s { font-size:10px; color:var(--dim); }
+
+.wg-rules { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px; }
+.wg-rule { display:flex; gap:10px; font-size:12px; line-height:1.5; margin-bottom:10px; color:var(--muted); }
+.wg-rule:last-child { margin-bottom:0; }
+.wg-rule-n { color:var(--warn); font-weight:700; font-size:14px; flex-shrink:0; }
+.wg-rule b { color:var(--text); }
+
+.wg-team { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.wg-round { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px; }
+.wg-round-h { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.wg-round-t { font-size:14px; font-weight:600; }
+.wg-round-s { font-size:10px; color:var(--muted); margin-top:2px; }
+.wg-round-empty { text-align:center; color:var(--dim); font-size:11px; padding:8px 0; }
+.wg-payout { display:grid; grid-template-columns:24px 1fr auto; align-items:center; gap:10px; padding:8px; border-radius:8px; margin-bottom:4px; }
+.wg-payout.first { background:rgba(224,181,91,0.08); border:1px solid rgba(224,181,91,0.2); }
+.wg-payout.second { background:rgba(180,180,180,0.05); border:1px solid var(--border); }
+.wg-medal { font-size:18px; }
+.wg-players { min-width:0; }
+.wg-pr { font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+.wg-pr:last-child { margin-bottom:0; }
+.wg-pts { color:var(--muted); font-weight:500; font-size:11px; font-variant-numeric:tabular-nums; }
+.wg-amt { font-size:15px; font-weight:700; color:var(--warn); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+.wg-earn { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:8px; }
+.wg-earn-h { display:grid; grid-template-columns:1.5fr 60px 60px 70px; padding:10px 12px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
+.wg-earn-h span:nth-child(n+2) { text-align:right; }
+.wg-earn-r { display:grid; grid-template-columns:1.5fr 60px 60px 70px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); }
+.wg-earn-r:last-child { border-bottom:none; }
+.wg-earn-n { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
+.wg-earn-v { text-align:right; font-size:13px; font-variant-numeric:tabular-nums; color:var(--muted); font-weight:600; }
+.wg-earn-v.pos { color:var(--good); }
+.wg-earn-v.neg { color:var(--bad); }
+
 /* Big leaderboard view */
 .lb-hero { background:linear-gradient(160deg,var(--card2),var(--card)); border:1px solid var(--border); border-radius:16px; padding:16px 14px; margin-bottom:14px; }
 .lb-hero-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; font-weight:700; }
@@ -742,6 +786,7 @@ function render() {
   else if (S.view === 'setup')  { if (isAdmin()) html = renderSetup(); else html = renderHome(); }
   else if (S.view === 'stat')   html = renderStat();
   else if (S.view === 'lboard') html = renderLboard();
+  else if (S.view === 'wager')  html = renderWager();
   else html = renderHome();
   app.innerHTML = html + renderBottomNav();
 }
@@ -776,6 +821,7 @@ function renderBottomNav() {
   const atScore = S.view === 'group';
   const atAdmin = S.view === 'setup';
   const atLb = S.view === 'lboard';
+  const atWager = S.view === 'wager';
   const atRounds = atHome && S.subTab === 'standings';
   const atPlayers = atHome && S.subTab === 'players';
   const admin = isAdmin();
@@ -800,7 +846,7 @@ function renderBottomNav() {
       <span class="bn-ic">⚙️</span><span class="bn-lbl">Admin</span>
     </button>` : '';
 
-  return `<div class="bnav" style="grid-template-columns:repeat(${admin?5:4},1fr);">
+  return `<div class="bnav" style="grid-template-columns:repeat(${admin?6:5},1fr);">
     <button class="bnav-btn ${atRounds?'act':''}" onclick="go('home',{subTab:'standings'})">
       <span class="bn-ic">🏠</span><span class="bn-lbl">Home</span>
     </button>
@@ -809,6 +855,9 @@ function renderBottomNav() {
     </button>
     <button class="bnav-btn bnav-score ${atScore?'act':''}" onclick="${scoreHandler}">
       <span class="bn-ic">✏️</span><span class="bn-lbl">Score</span>
+    </button>
+    <button class="bnav-btn ${atWager?'act':''}" onclick="go('wager')">
+      <span class="bn-ic">💰</span><span class="bn-lbl">Wagers</span>
     </button>
     <button class="bnav-btn ${atPlayers?'act':''}" onclick="go('home',{subTab:'players'})">
       <span class="bn-ic">👥</span><span class="bn-lbl">Players</span>
@@ -1293,6 +1342,204 @@ function renderLboard() {
   } else {
     h += `<div class="foot">Showing ${esc(ROUNDS.find(r=>r.id===scope).course)}<br>Tap headers to sort · Tap a player for full breakdown</div>`;
   }
+
+  return h;
+}
+
+/* ─── Wagers ─── */
+const WAGER = {
+  buyIn: 100,
+  pot: 1400,
+  teamPot: 700,
+  roundPot: 175,           // $700 split across 4 rounds
+  firstPctOfRound: 0.70,   // 1st = $122.50
+  secondPctOfRound: 0.30,  // 2nd = $52.50
+  firstDollars: 122.50,
+  secondDollars: 52.50,
+  teamPerPlayer: 100       // $700 / 7
+};
+
+/* Per-round 1st/2nd quota finishers with payouts (handles ties via payout splitting) */
+function roundPayouts(rId) {
+  // Rank all players with any holes by quota diff (descending), with gross tiebreaker only for display
+  const ranked = PLAYERS.map(p => {
+    const x = quotaDiffFor(p.id, rId);
+    return { p, pts: x.pts, diff: x.diff, gross: x.gross, holes: x.holes, complete: x.holes >= 18 };
+  }).filter(r => r.holes > 0).sort((a,b) => b.diff - a.diff);
+
+  if (ranked.length === 0) return { first: [], second: [], firstPay: 0, secondPay: 0, ranked, complete: false };
+
+  const allComplete = ranked.every(r => r.complete) && ranked.length === PLAYERS.length;
+
+  // Find diff value at 1st
+  const firstDiff = ranked[0].diff;
+  const first = ranked.filter(r => r.diff === firstDiff);
+  // Find diff value at 2nd
+  const rest = ranked.filter(r => r.diff < firstDiff);
+  const secondDiff = rest.length ? rest[0].diff : null;
+  const second = secondDiff != null ? rest.filter(r => r.diff === secondDiff) : [];
+
+  // Payouts with tie handling:
+  // If N players tie for 1st, they split (firstDollars * N + secondDollars) / N? No —
+  // cleanest: they split (1st + 2nd dollars) / N of tied players; no 2nd awarded.
+  // If only 1 player is 1st, 1st gets firstDollars; then 2nd place (possibly tied) splits secondDollars among them.
+  let firstPay, secondPay;
+  if (first.length === 1) {
+    firstPay = WAGER.firstDollars;
+    secondPay = second.length > 0 ? (WAGER.secondDollars / second.length) : 0;
+  } else {
+    // Multiple tied for 1st - split combined 1st+2nd money equally
+    firstPay = (WAGER.firstDollars + WAGER.secondDollars) / first.length;
+    secondPay = 0; // no 2nd awarded when there's a tie for 1st
+  }
+  return { first, second, firstPay, secondPay, ranked, complete: allComplete };
+}
+
+/* Total individual winnings per player across all completed rounds */
+function playerRoundsWinnings() {
+  const winnings = {};
+  PLAYERS.forEach(p => { winnings[p.id] = 0; });
+  ROUNDS.forEach(r => {
+    const rp = roundPayouts(r.id);
+    rp.first.forEach(x => winnings[x.p.id] += rp.firstPay);
+    rp.second.forEach(x => winnings[x.p.id] += rp.secondPay);
+  });
+  return winnings;
+}
+
+function renderWager() {
+  let h = topbar(null, 'Wagers');
+
+  // Hero pot summary
+  const t1Pts = tripPoints(1), t2Pts = tripPoints(2);
+  const leadTeam = t1Pts > t2Pts ? 1 : (t2Pts > t1Pts ? 2 : null);
+  const teamDone = ROUNDS.every(r => roundStatus(r.id) === 'done');
+
+  h += `<div class="wg-hero">
+    <div class="wg-hero-t">Prize Pool</div>
+    <div class="wg-hero-amt">$${WAGER.pot.toLocaleString()}</div>
+    <div class="wg-hero-s">14 players × $${WAGER.buyIn} buy-in</div>
+    <div class="wg-split">
+      <div class="wg-split-cell">
+        <div class="wg-split-lbl">Round Prizes</div>
+        <div class="wg-split-v">$${(WAGER.roundPot * 4).toFixed(0)}</div>
+        <div class="wg-split-s">$${WAGER.roundPot}/round</div>
+      </div>
+      <div class="wg-split-cell">
+        <div class="wg-split-lbl">Team Trip Prize</div>
+        <div class="wg-split-v">$${WAGER.teamPot}</div>
+        <div class="wg-split-s">$${WAGER.teamPerPlayer}/player</div>
+      </div>
+    </div>
+  </div>`;
+
+  // How it works
+  h += `<div class="sec-h"><span>📜 How It Works</span></div>`;
+  h += `<div class="wg-rules">
+    <div class="wg-rule"><span class="wg-rule-n">①</span><div><b>Each round:</b> Top 2 quota scorers win. 1st gets <b>$${WAGER.firstDollars.toFixed(2)}</b> (70%), 2nd gets <b>$${WAGER.secondDollars.toFixed(2)}</b> (30%).</div></div>
+    <div class="wg-rule"><span class="wg-rule-n">②</span><div><b>Ties:</b> Split the payout evenly. If tied for 1st, they split 1st + 2nd combined (no 2nd place awarded).</div></div>
+    <div class="wg-rule"><span class="wg-rule-n">③</span><div><b>Trip team prize:</b> Team with most total quota points across all 4 rounds wins <b>$${WAGER.teamPot}</b>, split evenly among 7 teammates.</div></div>
+  </div>`;
+
+  // Trip team prize card
+  h += `<div class="sec-h"><span>🏆 Trip Team Prize</span><span style="color:var(--dim);font-weight:500;text-transform:none;">${teamDone?'FINAL':'In Progress'}</span></div>`;
+  const t1Ldr = leadTeam === 1, t2Ldr = leadTeam === 2;
+  h += `<div class="wg-team">
+    <div class="team-card t1 ${t1Ldr?'leading':''}">
+      <div class="lbl">Team 1</div>
+      <div class="big">${t1Pts}</div>
+      <div class="sub">${t1Ldr ? `<b style="color:var(--good);">$${WAGER.teamPerPlayer}/player</b>` : (teamDone ? '—' : 'pts')}</div>
+    </div>
+    <div class="team-card t2 ${t2Ldr?'leading':''}">
+      <div class="lbl">Team 2</div>
+      <div class="big">${t2Pts}</div>
+      <div class="sub">${t2Ldr ? `<b style="color:var(--good);">$${WAGER.teamPerPlayer}/player</b>` : (teamDone ? '—' : 'pts')}</div>
+    </div>
+  </div>`;
+  if (leadTeam && !teamDone) {
+    h += `<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px;">Team ${leadTeam} leads by ${Math.abs(t1Pts-t2Pts)} pts — payouts finalized at end of R4</div>`;
+  } else if (!leadTeam && t1Pts > 0) {
+    h += `<div style="text-align:center;color:var(--warn);font-size:11px;margin-top:6px;">Teams tied — come back later</div>`;
+  }
+
+  // Round-by-round payouts
+  h += `<div class="sec-h"><span>💵 Round Payouts</span></div>`;
+  ROUNDS.forEach((r, idx) => {
+    const rp = roundPayouts(r.id);
+    const st = roundStatus(r.id);
+    const statusTxt = st === 'done' ? 'FINAL' : (st === 'active' ? 'LIVE' : 'UPCOMING');
+    const statusCls = st === 'done' ? 'done' : (st === 'active' ? 'live' : 'upcoming');
+    h += `<div class="wg-round">
+      <div class="wg-round-h">
+        <div>
+          <div class="wg-round-t">R${idx+1} · ${esc(r.short)}</div>
+          <div class="wg-round-s">${esc(r.date)}</div>
+        </div>
+        <span class="pill ${statusCls}">${statusTxt}</span>
+      </div>`;
+    if (rp.ranked.length === 0) {
+      h += `<div class="wg-round-empty">$${WAGER.firstDollars.toFixed(2)} / $${WAGER.secondDollars.toFixed(2)} up for grabs</div>`;
+    } else {
+      // 1st place
+      if (rp.first.length > 0) {
+        h += `<div class="wg-payout first">
+          <div class="wg-medal">🥇</div>
+          <div class="wg-players">
+            ${rp.first.map(x => `<div class="wg-pr"><span class="tdot t${x.p.t}"></span>${esc(x.p.name)} <span class="wg-pts">${x.pts}p (${fmtDiff(x.diff)})</span></div>`).join('')}
+          </div>
+          <div class="wg-amt">$${rp.firstPay.toFixed(2)}${rp.first.length>1?' ea':''}</div>
+        </div>`;
+      }
+      // 2nd place
+      if (rp.second.length > 0) {
+        h += `<div class="wg-payout second">
+          <div class="wg-medal">🥈</div>
+          <div class="wg-players">
+            ${rp.second.map(x => `<div class="wg-pr"><span class="tdot t${x.p.t}"></span>${esc(x.p.name)} <span class="wg-pts">${x.pts}p (${fmtDiff(x.diff)})</span></div>`).join('')}
+          </div>
+          <div class="wg-amt">$${rp.secondPay.toFixed(2)}${rp.second.length>1?' ea':''}</div>
+        </div>`;
+      }
+      if (st === 'active') {
+        h += `<div class="wg-round-empty" style="font-size:10px;">Standings update as scores come in</div>`;
+      }
+    }
+    h += `</div>`;
+  });
+
+  // Player earnings summary (trip-wide)
+  h += `<div class="sec-h"><span>💸 Trip Earnings</span></div>`;
+  const winnings = playerRoundsWinnings();
+  const rows = PLAYERS.map(p => {
+    let total = winnings[p.id];
+    // Add team win prize if their team is currently leading (provisional) or has won (final)
+    let teamWin = 0;
+    if (leadTeam === p.t) {
+      teamWin = WAGER.teamPerPlayer;
+      total += teamWin;
+    }
+    const net = total - WAGER.buyIn;
+    return { p, roundWin: winnings[p.id], teamWin, total, net };
+  }).sort((a,b) => b.net - a.net);
+
+  h += `<div class="wg-earn">
+    <div class="wg-earn-h">
+      <span>Player</span>
+      <span>Rounds</span>
+      <span>Team*</span>
+      <span>Net</span>
+    </div>`;
+  rows.forEach(r => {
+    const netCls = r.net > 0 ? 'pos' : (r.net < 0 ? 'neg' : '');
+    h += `<div class="wg-earn-r">
+      <span class="wg-earn-n"><span class="tdot t${r.p.t}"></span>${esc(r.p.name)}</span>
+      <span class="wg-earn-v">${r.roundWin > 0 ? '$'+r.roundWin.toFixed(0) : '—'}</span>
+      <span class="wg-earn-v ${r.teamWin > 0 ? 'pos' : ''}">${r.teamWin > 0 ? '$'+r.teamWin : '—'}</span>
+      <span class="wg-earn-v ${netCls}"><b>${r.net > 0 ? '+$'+r.net.toFixed(0) : (r.net < 0 ? '-$'+Math.abs(r.net).toFixed(0) : '$0')}</b></span>
+    </div>`;
+  });
+  h += `</div>`;
+  h += `<div class="foot">Rounds = winnings from round payouts<br>Team = $${WAGER.teamPerPlayer} if their team wins the trip (provisional while in progress)<br>Net = total winnings − $${WAGER.buyIn} buy-in</div>`;
 
   return h;
 }
