@@ -263,6 +263,13 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 .wg-pts { color:var(--muted); font-weight:500; font-size:11px; font-variant-numeric:tabular-nums; }
 .wg-amt { font-size:15px; font-weight:700; color:var(--warn); font-variant-numeric:tabular-nums; white-space:nowrap; }
 
+.wg-payout.forfeit { background:rgba(150,80,80,0.08); border:1px solid rgba(200,80,80,0.25); opacity:0.85; }
+.wg-amt.forfeit { color:var(--bad); font-size:13px; text-decoration:line-through; }
+.wg-noq { color:var(--bad); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; margin-left:4px; }
+.wg-carry-in { font-size:10px; color:var(--warn); font-weight:600; background:rgba(224,181,91,0.15); padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:middle; }
+.wg-carry-out { margin-top:8px; padding:8px; background:rgba(224,181,91,0.1); border:1px dashed rgba(224,181,91,0.35); border-radius:6px; font-size:11px; color:var(--warn); text-align:center; font-weight:600; }
+.wg-final-carry { margin-bottom:14px; padding:12px; background:rgba(224,181,91,0.15); border:1px solid rgba(224,181,91,0.4); border-radius:10px; font-size:13px; color:var(--warn); text-align:center; }
+
 .wg-earn { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:8px; }
 .wg-earn-h { display:grid; grid-template-columns:1.5fr 60px 60px 70px; padding:10px 12px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
 .wg-earn-h span:nth-child(n+2) { text-align:right; }
@@ -1359,48 +1366,117 @@ const WAGER = {
   teamPerPlayer: 100       // $700 / 7
 };
 
-/* Per-round 1st/2nd quota finishers with payouts (handles ties via payout splitting) */
-function roundPayouts(rId) {
-  // Rank all players with any holes by quota diff (descending), with gross tiebreaker only for display
+/* Per-round 1st/2nd quota finishers with payouts.
+ * Rules:
+ *   - A player must actually hit their quota (diff >= 0) to be eligible for a prize
+ *   - If the top-ranked player didn't hit quota, the first-prize money carries over to next round
+ *   - Same for second-prize money
+ *   - Ties split the relevant prize evenly
+ *   - 'carryIn' is the dollar amount carried over into THIS round from prior rounds
+ */
+function roundPayouts(rId, carryIn) {
+  carryIn = carryIn || 0;
+  // Effective pot this round = regular + any carryover (stays 70/30 split)
+  const pot = WAGER.roundPot + carryIn;
+  const firstPot = pot * WAGER.firstPctOfRound;
+  const secondPot = pot * WAGER.secondPctOfRound;
+
   const ranked = PLAYERS.map(p => {
     const x = quotaDiffFor(p.id, rId);
-    return { p, pts: x.pts, diff: x.diff, gross: x.gross, holes: x.holes, complete: x.holes >= 18 };
+    return { p, pts: x.pts, diff: x.diff, gross: x.gross, holes: x.holes, complete: x.holes >= 18, madeQuota: x.holes > 0 && x.diff >= 0 };
   }).filter(r => r.holes > 0).sort((a,b) => b.diff - a.diff);
 
-  if (ranked.length === 0) return { first: [], second: [], firstPay: 0, secondPay: 0, ranked, complete: false };
+  if (ranked.length === 0) {
+    return { first: [], second: [], firstPay: 0, secondPay: 0, ranked, complete: false,
+             firstPot, secondPot, carryIn, carryOut: 0, pot };
+  }
 
   const allComplete = ranked.every(r => r.complete) && ranked.length === PLAYERS.length;
 
-  // Find diff value at 1st
+  // 1st: all players tied at the top diff
   const firstDiff = ranked[0].diff;
-  const first = ranked.filter(r => r.diff === firstDiff);
-  // Find diff value at 2nd
+  const firstTie = ranked.filter(r => r.diff === firstDiff);
   const rest = ranked.filter(r => r.diff < firstDiff);
   const secondDiff = rest.length ? rest[0].diff : null;
-  const second = secondDiff != null ? rest.filter(r => r.diff === secondDiff) : [];
+  const secondTie = secondDiff != null ? rest.filter(r => r.diff === secondDiff) : [];
 
-  // Payouts with tie handling:
-  // If N players tie for 1st, they split (firstDollars * N + secondDollars) / N? No —
-  // cleanest: they split (1st + 2nd dollars) / N of tied players; no 2nd awarded.
-  // If only 1 player is 1st, 1st gets firstDollars; then 2nd place (possibly tied) splits secondDollars among them.
-  let firstPay, secondPay;
-  if (first.length === 1) {
-    firstPay = WAGER.firstDollars;
-    secondPay = second.length > 0 ? (WAGER.secondDollars / second.length) : 0;
+  // Apply quota-made filter
+  const firstQualifies = firstTie.filter(r => r.madeQuota);
+  const secondQualifies = secondTie.filter(r => r.madeQuota);
+
+  // Build payouts
+  let first = [], second = [], firstPay = 0, secondPay = 0, carryOut = 0;
+
+  // Handle 1st place
+  if (firstQualifies.length > 0) {
+    if (firstTie.length === 1) {
+      // Clean 1st place
+      first = firstQualifies;
+      firstPay = firstPot;
+    } else {
+      // Tied for 1st (multiple players at top diff)
+      // They split 1st + 2nd combined (so 2nd is NOT awarded)
+      // But only qualifying (quota-made) players among the tied set share the pot
+      first = firstQualifies;
+      firstPay = (firstPot + secondPot) / firstQualifies.length;
+      // Don't award 2nd at all in this case - consumed by tied 1st
+      secondPay = 0;
+      // If some tied-first didn't make quota, their share is forfeited → carryover
+      const forfeited = firstTie.length - firstQualifies.length;
+      if (forfeited > 0) {
+        carryOut += (firstPot + secondPot) * forfeited / firstTie.length;
+      }
+      return { first, second: [], firstPay, secondPay: 0, ranked, complete: allComplete,
+               firstPot, secondPot, carryIn, carryOut, pot };
+    }
   } else {
-    // Multiple tied for 1st - split combined 1st+2nd money equally
-    firstPay = (WAGER.firstDollars + WAGER.secondDollars) / first.length;
-    secondPay = 0; // no 2nd awarded when there's a tie for 1st
+    // No one at 1st made quota → all of 1st pot carries
+    carryOut += firstPot;
   }
-  return { first, second, firstPay, secondPay, ranked, complete: allComplete };
+
+  // Handle 2nd place (only reached if 1st was clean / single)
+  if (secondQualifies.length > 0) {
+    second = secondQualifies;
+    secondPay = secondPot / secondQualifies.length;
+    // If some tied-second didn't make quota, forfeit their shares
+    const forfeited = secondTie.length - secondQualifies.length;
+    if (forfeited > 0) {
+      carryOut += secondPot * forfeited / secondTie.length;
+    }
+  } else {
+    // No one at 2nd (or no one qualified) → all of 2nd pot carries
+    carryOut += secondPot;
+  }
+
+  return { first, second, firstPay, secondPay, ranked, complete: allComplete,
+           firstPot, secondPot, carryIn, carryOut, pot };
 }
 
-/* Total individual winnings per player across all completed rounds */
+/* Walk through all rounds chronologically, tracking carryover */
+function allRoundPayouts() {
+  const results = [];
+  let carry = 0;
+  ROUNDS.forEach(r => {
+    // Only "settle" a round (award + carry) when it's complete
+    const rp = roundPayouts(r.id, carry);
+    if (rp.complete) {
+      results.push({ r, rp });
+      carry = rp.carryOut;
+    } else {
+      // For in-progress / upcoming rounds, show provisional standings with current carry-in
+      results.push({ r, rp });
+      // Don't advance carry since round isn't final yet
+    }
+  });
+  return { results, finalCarry: carry };
+}
+
+/* Total individual winnings per player across all rounds (respects carryovers) */
 function playerRoundsWinnings() {
   const winnings = {};
   PLAYERS.forEach(p => { winnings[p.id] = 0; });
-  ROUNDS.forEach(r => {
-    const rp = roundPayouts(r.id);
+  const { results } = allRoundPayouts();
+  results.forEach(({ rp }) => {
     rp.first.forEach(x => winnings[x.p.id] += rp.firstPay);
     rp.second.forEach(x => winnings[x.p.id] += rp.secondPay);
   });
@@ -1437,57 +1513,78 @@ function renderWager() {
   h += `<div class="sec-h"><span>📜 How It Works</span></div>`;
   h += `<div class="wg-rules">
     <div class="wg-rule"><span class="wg-rule-n">①</span><div><b>Each round:</b> Top 2 quota scorers win. 1st gets <b>$${WAGER.firstDollars.toFixed(2)}</b> (70%), 2nd gets <b>$${WAGER.secondDollars.toFixed(2)}</b> (30%).</div></div>
-    <div class="wg-rule"><span class="wg-rule-n">②</span><div><b>Ties:</b> Split the payout evenly. If tied for 1st, they split 1st + 2nd combined (no 2nd place awarded).</div></div>
-    <div class="wg-rule"><span class="wg-rule-n">③</span><div><b>Trip team prize:</b> Team with most total quota points across all 4 rounds wins <b>$${WAGER.teamPot}</b>, split evenly among 7 teammates.</div></div>
+    <div class="wg-rule"><span class="wg-rule-n">②</span><div><b>You must hit your quota to collect.</b> If the top finisher didn't make their quota, their prize carries to the next round.</div></div>
+    <div class="wg-rule"><span class="wg-rule-n">③</span><div><b>Ties:</b> split the payout evenly. If tied for 1st, they split 1st + 2nd combined (no 2nd awarded).</div></div>
+    <div class="wg-rule"><span class="wg-rule-n">④</span><div><b>Trip team prize:</b> team with most total quota points across all 4 rounds wins <b>$${WAGER.teamPot}</b>, split evenly among 7 teammates. Any money unclaimed after R4 is added here.</div></div>
   </div>`;
 
   // Trip team prize card
   h += `<div class="sec-h"><span>🏆 Trip Team Prize</span><span style="color:var(--dim);font-weight:500;text-transform:none;">${teamDone?'FINAL':'In Progress'}</span></div>`;
   const t1Ldr = leadTeam === 1, t2Ldr = leadTeam === 2;
+  // Compute bonus team pot if unclaimed money carries to the end
+  const apo = allRoundPayouts();
+  const teamBonus = apo.finalCarry;
+  const teamTotalPot = WAGER.teamPot + teamBonus;
+  const perPlayer = teamTotalPot / 7;
   h += `<div class="wg-team">
     <div class="team-card t1 ${t1Ldr?'leading':''}">
       <div class="lbl">Team 1</div>
       <div class="big">${t1Pts}</div>
-      <div class="sub">${t1Ldr ? `<b style="color:var(--good);">$${WAGER.teamPerPlayer}/player</b>` : (teamDone ? '—' : 'pts')}</div>
+      <div class="sub">${t1Ldr ? `<b style="color:var(--good);">$${perPlayer.toFixed(2)}/player</b>` : (teamDone ? '—' : 'pts')}</div>
     </div>
     <div class="team-card t2 ${t2Ldr?'leading':''}">
       <div class="lbl">Team 2</div>
       <div class="big">${t2Pts}</div>
-      <div class="sub">${t2Ldr ? `<b style="color:var(--good);">$${WAGER.teamPerPlayer}/player</b>` : (teamDone ? '—' : 'pts')}</div>
+      <div class="sub">${t2Ldr ? `<b style="color:var(--good);">$${perPlayer.toFixed(2)}/player</b>` : (teamDone ? '—' : 'pts')}</div>
     </div>
   </div>`;
+  if (teamBonus > 0 && teamDone) {
+    h += `<div style="text-align:center;color:var(--warn);font-size:11px;margin-top:6px;"><b>+$${teamBonus.toFixed(2)}</b> carried over from unclaimed round prizes</div>`;
+  }
   if (leadTeam && !teamDone) {
     h += `<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px;">Team ${leadTeam} leads by ${Math.abs(t1Pts-t2Pts)} pts — payouts finalized at end of R4</div>`;
   } else if (!leadTeam && t1Pts > 0) {
     h += `<div style="text-align:center;color:var(--warn);font-size:11px;margin-top:6px;">Teams tied — come back later</div>`;
   }
 
-  // Round-by-round payouts
+  // Round-by-round payouts (with carryover tracking)
   h += `<div class="sec-h"><span>💵 Round Payouts</span></div>`;
-  ROUNDS.forEach((r, idx) => {
-    const rp = roundPayouts(r.id);
+  apo.results.forEach(({ r, rp }, idx) => {
     const st = roundStatus(r.id);
     const statusTxt = st === 'done' ? 'FINAL' : (st === 'active' ? 'LIVE' : 'UPCOMING');
     const statusCls = st === 'done' ? 'done' : (st === 'active' ? 'live' : 'upcoming');
+    const carryBadge = rp.carryIn > 0
+      ? `<span class="wg-carry-in" title="Carryover from prior rounds">+$${rp.carryIn.toFixed(2)} carry</span>`
+      : '';
     h += `<div class="wg-round">
       <div class="wg-round-h">
         <div>
-          <div class="wg-round-t">R${idx+1} · ${esc(r.short)}</div>
-          <div class="wg-round-s">${esc(r.date)}</div>
+          <div class="wg-round-t">R${idx+1} · ${esc(r.short)} ${carryBadge}</div>
+          <div class="wg-round-s">${esc(r.date)} · Pot $${rp.pot.toFixed(2)}</div>
         </div>
         <span class="pill ${statusCls}">${statusTxt}</span>
       </div>`;
     if (rp.ranked.length === 0) {
-      h += `<div class="wg-round-empty">$${WAGER.firstDollars.toFixed(2)} / $${WAGER.secondDollars.toFixed(2)} up for grabs</div>`;
+      h += `<div class="wg-round-empty">$${rp.firstPot.toFixed(2)} / $${rp.secondPot.toFixed(2)} up for grabs</div>`;
     } else {
       // 1st place
       if (rp.first.length > 0) {
         h += `<div class="wg-payout first">
           <div class="wg-medal">🥇</div>
           <div class="wg-players">
-            ${rp.first.map(x => `<div class="wg-pr"><span class="tdot t${x.p.t}"></span>${esc(x.p.name)} <span class="wg-pts">${x.pts}p (${fmtDiff(x.diff)})</span></div>`).join('')}
+            ${rp.first.map(x => `<div class="wg-pr"><span class="tdot t${x.p.t}"></span>${esc(x.p.name)} <span class="wg-pts">${x.pts}p (${fmtDiff(x.diff)})</span>${x.madeQuota?'':' <span class="wg-noq">below quota</span>'}</div>`).join('')}
           </div>
           <div class="wg-amt">$${rp.firstPay.toFixed(2)}${rp.first.length>1?' ea':''}</div>
+        </div>`;
+      } else if (st === 'done' && rp.ranked[0]) {
+        // No one qualified for 1st
+        const topper = rp.ranked[0];
+        h += `<div class="wg-payout forfeit">
+          <div class="wg-medal">🥇</div>
+          <div class="wg-players">
+            <div class="wg-pr"><span class="tdot t${topper.p.t}"></span>${esc(topper.p.name)} <span class="wg-pts">${topper.pts}p (${fmtDiff(topper.diff)})</span> <span class="wg-noq">below quota</span></div>
+          </div>
+          <div class="wg-amt forfeit">$${rp.firstPot.toFixed(2)} →</div>
         </div>`;
       }
       // 2nd place
@@ -1499,13 +1596,34 @@ function renderWager() {
           </div>
           <div class="wg-amt">$${rp.secondPay.toFixed(2)}${rp.second.length>1?' ea':''}</div>
         </div>`;
+      } else if (st === 'done' && rp.ranked.length > 1) {
+        // No qualifying 2nd place
+        const secondRaw = rp.ranked.find(x => x.diff < rp.ranked[0].diff);
+        if (secondRaw) {
+          h += `<div class="wg-payout forfeit">
+            <div class="wg-medal">🥈</div>
+            <div class="wg-players">
+              <div class="wg-pr"><span class="tdot t${secondRaw.p.t}"></span>${esc(secondRaw.p.name)} <span class="wg-pts">${secondRaw.pts}p (${fmtDiff(secondRaw.diff)})</span> <span class="wg-noq">below quota</span></div>
+            </div>
+            <div class="wg-amt forfeit">$${rp.secondPot.toFixed(2)} →</div>
+          </div>`;
+        }
       }
       if (st === 'active') {
-        h += `<div class="wg-round-empty" style="font-size:10px;">Standings update as scores come in</div>`;
+        h += `<div class="wg-round-empty" style="font-size:10px;">Standings update as scores come in · Must hit quota to collect</div>`;
+      }
+      // Carry-out footer
+      if (st === 'done' && rp.carryOut > 0) {
+        h += `<div class="wg-carry-out">💸 $${rp.carryOut.toFixed(2)} carries to next round</div>`;
       }
     }
     h += `</div>`;
   });
+
+  // Final trip carryover if everything is done and money is still unclaimed
+  if (teamDone && apo.finalCarry > 0) {
+    h += `<div class="wg-final-carry">🏆 <b>$${apo.finalCarry.toFixed(2)}</b> unclaimed after R4 — added to team prize</div>`;
+  }
 
   // Player earnings summary (trip-wide)
   h += `<div class="sec-h"><span>💸 Trip Earnings</span></div>`;
@@ -1513,9 +1631,10 @@ function renderWager() {
   const rows = PLAYERS.map(p => {
     let total = winnings[p.id];
     // Add team win prize if their team is currently leading (provisional) or has won (final)
+    // Uses perPlayer which already includes any unclaimed carryover
     let teamWin = 0;
     if (leadTeam === p.t) {
-      teamWin = WAGER.teamPerPlayer;
+      teamWin = perPlayer;
       total += teamWin;
     }
     const net = total - WAGER.buyIn;
