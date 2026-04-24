@@ -272,8 +272,10 @@ body { min-height:100vh; min-height:100dvh; padding-bottom:env(safe-area-inset-b
 
 .wg-earn { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:8px; }
 .wg-earn-h { display:grid; grid-template-columns:1.5fr 60px 60px 70px; padding:10px 12px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; font-weight:700; background:var(--bg2); border-bottom:1px solid var(--border); }
+.wg-earn-h.wg-earn-h-3 { grid-template-columns:1.5fr 1fr 1fr; }
 .wg-earn-h span:nth-child(n+2) { text-align:right; }
 .wg-earn-r { display:grid; grid-template-columns:1.5fr 60px 60px 70px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); }
+.wg-earn-r.wg-earn-r-3 { grid-template-columns:1.5fr 1fr 1fr; }
 .wg-earn-r:last-child { border-bottom:none; }
 .wg-earn-n { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
 .wg-earn-v { text-align:right; font-size:13px; font-variant-numeric:tabular-nums; color:var(--muted); font-weight:600; }
@@ -1532,19 +1534,20 @@ function renderWager() {
     <div class="team-card t1 ${t1Ldr?'leading':''}">
       <div class="lbl">Team 1</div>
       <div class="big">${t1Pts}</div>
-      <div class="sub">${t1Ldr ? `<b style="color:var(--good);">$${perPlayer.toFixed(2)}/player</b>` : (teamDone ? '—' : 'pts')}</div>
+      <div class="sub">${teamDone && t1Ldr ? `<b style="color:var(--good);">$${perPlayer.toFixed(0)}/player</b>` : (t1Ldr ? 'leading' : 'pts')}</div>
     </div>
     <div class="team-card t2 ${t2Ldr?'leading':''}">
       <div class="lbl">Team 2</div>
       <div class="big">${t2Pts}</div>
-      <div class="sub">${t2Ldr ? `<b style="color:var(--good);">$${perPlayer.toFixed(2)}/player</b>` : (teamDone ? '—' : 'pts')}</div>
+      <div class="sub">${teamDone && t2Ldr ? `<b style="color:var(--good);">$${perPlayer.toFixed(0)}/player</b>` : (t2Ldr ? 'leading' : 'pts')}</div>
     </div>
   </div>`;
   if (teamBonus > 0 && teamDone) {
     h += `<div style="text-align:center;color:var(--warn);font-size:11px;margin-top:6px;"><b>+$${teamBonus.toFixed(2)}</b> carried over from unclaimed round prizes</div>`;
   }
   if (leadTeam && !teamDone) {
-    h += `<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px;">Team ${leadTeam} leads by ${Math.abs(t1Pts-t2Pts)} pts — payouts finalized at end of R4</div>`;
+    const donePts = ROUNDS.filter(r=>roundStatus(r.id)==='done').length;
+    h += `<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px;">Team ${leadTeam} leads by ${Math.abs(t1Pts-t2Pts)} pts · ${donePts} of 4 rounds complete</div>`;
   } else if (!leadTeam && t1Pts > 0) {
     h += `<div style="text-align:center;color:var(--warn);font-size:11px;margin-top:6px;">Teams tied — come back later</div>`;
   }
@@ -1628,39 +1631,58 @@ function renderWager() {
   }
 
   // Player earnings summary (trip-wide)
-  h += `<div class="sec-h"><span>💸 Trip Earnings</span></div>`;
+  h += `<div class="sec-h"><span>💸 Trip Earnings</span><span style="color:var(--dim);font-weight:500;text-transform:none;">${teamDone ? 'FINAL' : `Through R${ROUNDS.filter(r=>roundStatus(r.id)==='done').length} of ${ROUNDS.length}`}</span></div>`;
+
   const winnings = playerRoundsWinnings();
   const rows = PLAYERS.map(p => {
-    let total = winnings[p.id];
-    // Add team win prize if their team is currently leading (provisional) or has won (final)
-    // Uses perPlayer which already includes any unclaimed carryover
-    let teamWin = 0;
-    if (leadTeam === p.t) {
-      teamWin = perPlayer;
-      total += teamWin;
-    }
-    const net = total - WAGER.buyIn;
-    return { p, roundWin: winnings[p.id], teamWin, total, net };
-  }).sort((a,b) => b.net - a.net);
+    const roundWin = winnings[p.id];
+    // Team prize only counted when trip is fully done
+    const teamWin = (teamDone && leadTeam === p.t) ? perPlayer : 0;
+    const totalEarned = roundWin + teamWin;
+    // Net buy-in only reflected when trip is fully done; otherwise show what they've won so far
+    const net = teamDone ? (totalEarned - WAGER.buyIn) : totalEarned;
+    return { p, roundWin, teamWin, totalEarned, net };
+  }).sort((a,b) => b.net - a.net || (b.roundWin - a.roundWin));
 
-  h += `<div class="wg-earn">
-    <div class="wg-earn-h">
-      <span>Player</span>
-      <span>Rounds</span>
-      <span>Team*</span>
-      <span>Net</span>
-    </div>`;
-  rows.forEach(r => {
-    const netCls = r.net > 0 ? 'pos' : (r.net < 0 ? 'neg' : '');
-    h += `<div class="wg-earn-r">
-      <span class="wg-earn-n"><span class="tdot t${r.p.t}"></span>${esc(r.p.name)}</span>
-      <span class="wg-earn-v">${r.roundWin > 0 ? '$'+r.roundWin.toFixed(0) : '—'}</span>
-      <span class="wg-earn-v ${r.teamWin > 0 ? 'pos' : ''}">${r.teamWin > 0 ? '$'+r.teamWin : '—'}</span>
-      <span class="wg-earn-v ${netCls}"><b>${r.net > 0 ? '+$'+r.net.toFixed(0) : (r.net < 0 ? '-$'+Math.abs(r.net).toFixed(0) : '$0')}</b></span>
-    </div>`;
-  });
-  h += `</div>`;
-  h += `<div class="foot">Rounds = winnings from round payouts<br>Team = $${WAGER.teamPerPlayer} if their team wins the trip (provisional while in progress)<br>Net = total winnings − $${WAGER.buyIn} buy-in</div>`;
+  // Different column layout depending on whether trip is final
+  if (teamDone) {
+    h += `<div class="wg-earn wg-earn-final">
+      <div class="wg-earn-h">
+        <span>Player</span>
+        <span>Rounds</span>
+        <span>Team</span>
+        <span>Net</span>
+      </div>`;
+    rows.forEach(r => {
+      const netCls = r.net > 0 ? 'pos' : (r.net < 0 ? 'neg' : '');
+      h += `<div class="wg-earn-r">
+        <span class="wg-earn-n"><span class="tdot t${r.p.t}"></span>${esc(r.p.name)}</span>
+        <span class="wg-earn-v">${r.roundWin > 0 ? '$'+r.roundWin.toFixed(0) : '—'}</span>
+        <span class="wg-earn-v ${r.teamWin > 0 ? 'pos' : ''}">${r.teamWin > 0 ? '$'+r.teamWin.toFixed(0) : '—'}</span>
+        <span class="wg-earn-v ${netCls}"><b>${r.net > 0 ? '+$'+r.net.toFixed(0) : (r.net < 0 ? '-$'+Math.abs(r.net).toFixed(0) : '$0')}</b></span>
+      </div>`;
+    });
+    h += `</div>`;
+    h += `<div class="foot">Rounds = winnings from per-round payouts · Team = ${perPlayer !== WAGER.teamPerPlayer ? 'base $100 + carryover bonus' : '$'+WAGER.teamPerPlayer+' per winning team player'}<br>Net = total winnings − $${WAGER.buyIn} buy-in</div>`;
+  } else {
+    // In-progress: just show what each player has won so far
+    h += `<div class="wg-earn">
+      <div class="wg-earn-h wg-earn-h-3">
+        <span>Player</span>
+        <span>Rounds Won</span>
+        <span>Earned</span>
+      </div>`;
+    rows.forEach(r => {
+      const hasWon = r.roundWin > 0;
+      h += `<div class="wg-earn-r wg-earn-r-3">
+        <span class="wg-earn-n"><span class="tdot t${r.p.t}"></span>${esc(r.p.name)}</span>
+        <span class="wg-earn-v">${hasWon ? '$'+r.roundWin.toFixed(0) : '—'}</span>
+        <span class="wg-earn-v ${hasWon ? 'pos' : ''}">${hasWon ? '+$'+r.roundWin.toFixed(0) : '—'}</span>
+      </div>`;
+    });
+    h += `</div>`;
+    h += `<div class="foot">Team prize ($${WAGER.teamPot}) + buy-ins ($${WAGER.buyIn} ea) settle at end of R4<br>Carryover rolls forward until someone hits quota</div>`;
+  }
 
   return h;
 }
