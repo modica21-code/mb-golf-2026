@@ -414,6 +414,8 @@ body { padding-bottom:calc(74px + env(safe-area-inset-bottom,0)) !important; }
 .hs-nav button { padding:14px; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
 .hs-nav button:active { background:var(--bg2); }
 .hs-nav button.next { background:var(--t1); color:var(--bg); border-color:var(--t1); }
+.hs-nav button.finish { background:var(--good); color:#fff; border-color:var(--good); font-weight:700; }
+.hs-nav button.finish:active { opacity:.85; }
 .hs-nav button:disabled { opacity:.3; }
 .hs-quota-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:12px; margin-top:12px; }
 .hs-quota-strip.g2 { grid-template-columns:repeat(2, 1fr); }
@@ -1992,10 +1994,12 @@ function renderGroupHoleMode(r, group, pars) {
 
   // Nav buttons
   const prevDis = i === 0 ? 'disabled' : '';
-  const nextDis = i === 17 ? 'disabled' : '';
+  const onLast = i === 17;
   h += `<div class="hs-nav">
     <button ${prevDis} onclick="gotoHole(${i-1})">← Hole ${i}</button>
-    <button class="next" ${nextDis} onclick="gotoHole(${i+1})">Hole ${i+2} →</button>
+    ${onLast
+      ? `<button class="finish" onclick="go('round',{rId:'${r.id}'})">✓ Finish Round →</button>`
+      : `<button class="next" onclick="gotoHole(${i+1})">Hole ${i+2} →</button>`}
   </div>`;
 
   // Running quota strip
